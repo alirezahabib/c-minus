@@ -116,11 +116,10 @@ class Scanner:
     def __init__(self):
         self.symbol_table = SymbolTable()
         self.tokens = []
-        self.text = ''
-        self.reader = None
-
-    def set_reader(self, reader):
-        self.reader = reader
+        self.char = ''
+        self.reader = Reader('input.txt')
+        self.start_state = states[0]
+        self.errors = []
 
     def get_token(self):
         return self.tokens.pop(0)
@@ -128,8 +127,7 @@ class Scanner:
     def get_symbol_table(self):
         return self.symbol_table
 
-    def scan(self):
-        self.tokens = []
+    def get_next_token(self):
         self.text = ''
         while True:
             c = self.reader.get_char()
@@ -138,7 +136,7 @@ class Scanner:
             self.text += c
             for pattern in patterns:
                 if re.match(pattern[0], self.text):
-                    if pattern[1] == 'ID':
+                    if pattern[1] == 'ID' or pattern[1] == 'keyword':
                         self.symbol_table.add_symbol(self.text)
                     if pattern[1] == 'NUM':
                         if int(self.text) > 999999999:
@@ -157,6 +155,14 @@ class Scanner:
                         self.text = ''
                         break
 
+    def goto_next_state(self):
+        if self.char is None:
+            return None
+        if self.char in self.current_state.transitions:
+            self.current_state = self.current_state.transitions[self.char]
+            return self.current_state
+        else:
+            return None
 
 
 class State:
