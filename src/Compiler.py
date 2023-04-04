@@ -1,9 +1,31 @@
+# C- compiler (Part 1 - Scanner)
+# Compilers | Sharif University of Technology
+# Soheil   Nazari      99******
+# Alireza  Habibzadeh  99109393
+
+
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
 symbols = ['+', '-', '*', '/', '<', '==', '=', ':', ';', ',', '(', ')', '[', ']', '{', '}']
-whitespace = [' ', '\n', '\r', '\t', '\v', '\f']
-valid_chars = keywords + symbols + whitespace + [chr(i) for i in range(65, 91)] + [chr(i) for i in range(97, 123)] + [
-    chr(i) for i in range(48, 58)]
+whitespaces = [' ', '\n', '\r', '\t', '\v', '\f']
+
+# Token types
+NUM = 'NUM'
+ID = 'ID'
+KEYWORD = 'KEYWORD'
+SYMBOL = 'SYMBOL'
+COMMENT = 'COMMENT'
+WHITESPACE = 'WHITESPACE'
+START = 'START'
+ERROR = 'ERROR'
+EOF = 'EOF'
+
+valid_chars = keywords + symbols + whitespaces + \
+              [chr(i) for i in range(65, 91)] + \
+              [chr(i) for i in range(97, 123)] + \
+              [chr(i) for i in range(48, 58)]
+
 invalid_chars = [chr(i) for i in range(256) if chr(i) not in valid_chars]
+
 # Regular expression patterns for tokens
 patterns = [
     (r'[a-zA-Z][a-zA-Z0-9]*', 'ID'),
@@ -97,27 +119,15 @@ class Token:
         self.token_value = token_value
 
     def __str__(self):
-        return f'{self.token_type} {self.token_value}'
-
-    def get_type(self):
-        return self.token_type
-
-    def get_value(self):
-        return self.token_value
-
-    def set_type(self, token_type):
-        self.token_type = token_type
-
-    def set_value(self, token_value):
-        self.token_value = token_value
+        return f'({self.token_type}, {self.token_value})'
 
 
 class Scanner:
-    def __init__(self):
+    def __init__(self, file_name):
         self.symbol_table = SymbolTable()
         self.tokens = []
         self.char = ''
-        self.reader = Reader('input.txt')
+        self.reader = Reader(file_name)
         self.start_state = states[0]
         self.errors = []
 
@@ -166,12 +176,14 @@ class Scanner:
 
 
 class State:
-    def __init__(self, id, type, is_final, is_star, error=""):
+    states = dict()
+
+    def __init__(self, id, state_type, is_final, is_star, error=""):
         self.id = id
         self.transitions = {}
         self.error = error
-        states[ID] = self
-        self.type = type
+        states[id] = self
+        self.state_type = state_type
         self.is_star = is_star
         self.is_final = is_final
 
@@ -187,3 +199,6 @@ class State:
 
     def get_error(self):
         return self.error
+
+    def next(self, char):
+        return self.transitions.get(char)  # returns None if char is not in transitions
