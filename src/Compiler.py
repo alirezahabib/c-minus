@@ -1,13 +1,14 @@
-# C- compiler (Part 1 - Scanner)
-# Compilers | Sharif University of Technology
-# Soheil   Nazari      99******
-# Alireza  Habibzadeh  99109393
+# C- compiler (Phase 1 - Scanner)
+# Compiler Design | Sharif University of Technology
+# Soheil   Nazari  Mendejin    99102412
+# Alireza  Habibzadeh          99109393
 
 
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
 symbols = ['+', '-', '*', '/', '<', '==', '=', ':', ';', ',', '(', ')', '[', ']', '{', '}']
 whitespaces = [' ', '\n', '\r', '\t', '\v', '\f']
-
+alphabets = [chr(i) for i in range(65, 91)] + [chr(i) for i in range(97, 123)]
+digits = [chr(i) for i in range(48, 58)]
 # Token types
 NUM = 'NUM'
 ID = 'ID'
@@ -18,12 +19,7 @@ WHITESPACE = 'WHITESPACE'
 START = 'START'
 ERROR = 'ERROR'
 EOF = 'EOF'
-
-valid_chars = keywords + symbols + whitespaces + \
-              [chr(i) for i in range(65, 91)] + \
-              [chr(i) for i in range(97, 123)] + \
-              [chr(i) for i in range(48, 58)]
-
+valid_chars = keywords + symbols + whitespaces + alphabets + digits
 invalid_chars = [chr(i) for i in range(256) if chr(i) not in valid_chars]
 
 # Regular expression patterns for tokens
