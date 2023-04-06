@@ -40,12 +40,11 @@ class Reader:
         self.char_index = 0
 
     def get_char(self):
-        if self.char_index == len(self.line):
+        if self.char_index >= len(self.line):
             self.line = self.readline()
             self.char_index = 0
-            if not self.line:
-                return None
-
+        if not self.line:
+            return None
         c = self.line[self.char_index]
         self.char_index += 1
         return c
@@ -74,8 +73,8 @@ class Scanner:
         self.symbol_table = SymbolTable()
         self.reader = reader
         self.start_state = State.states[0]
-        self.tokens = []  # line_number, list of tokens
-        self.lexical_errors = []  # line_number, list of errors
+        self.tokens = {}  # line_number: list of tokens
+        self.lexical_errors = {}  # line_number: list of errors
 
     def get_next_token(self) -> Token:
         current_state: State = self.start_state
@@ -83,11 +82,15 @@ class Scanner:
 
         while True:
             c = self.reader.get_char()
+            print(c, current_state.id)
             current_state = current_state.next_state(next_char=c)
+            print(current_state.id)
             if current_state.is_star:
                 self.reader.char_index -= 1
 
             if current_state.is_final:
+                if current_state.state_type == ID:
+                    self.symbol_table.add_symbol(token_name)
                 if token_name in keywords:
                     return Token(KEYWORD, token_name)
                 return Token(current_state.state_type, token_name)
@@ -96,14 +99,18 @@ class Scanner:
 
     def __str__(self):
         s = ''
-        for line_number, line_tokens in self.tokens:
-            s += f'{str(line_number) + ".":<5}'
-            for token in line_tokens:
-                s += ' ' + str(token)
-            s += '\n'
+        for line_number in self.tokens:
+            line_tokens = ''
+            for token in self.tokens[line_number]:
+                if token.token_type not in hidden_tokens:
+                    line_tokens += ' ' + str(token)
+            if line_tokens:
+                s += f'{str(line_number) + ".":<5}' + line_tokens + '\n'
         return s
 
     def repr_lexical_errors(self):
+        if not self.lexical_errors:
+            return 'There is no lexical error.\n'
         s = ''
         for line_number, line_lexical_errors in self.lexical_errors:
             s += f'{str(line_number) + ".":<5}'
@@ -111,6 +118,14 @@ class Scanner:
                 s += ' ' + str(error)
             s += '\n'
         return s
+
+    def get_tokens(self):
+        token = Token(token_type=START, token_value='')
+        while token.token_type != EOF:
+            token = self.get_next_token()
+            if self.reader.line_number not in self.tokens:
+                self.tokens[self.reader.line_number] = []
+            self.tokens[self.reader.line_number].append(token)
 
 
 class State:
@@ -144,6 +159,8 @@ START = 'START'
 PANIC = 'PANIC'
 EOF = 'EOF'
 
+hidden_tokens = [COMMENT, WHITESPACE, START, PANIC, EOF]
+
 State(0, START, is_final=True, is_star=False)
 
 State(10, NUM, is_final=False, is_star=False)
@@ -163,25 +180,24 @@ State(100, EOF, is_final=True, is_star=False)
 State.states[0] \
     .add_transition(digits, State.states[10]) \
     .add_transition(letters, State.states[20]) \
-    .add_transition(whitespaces, State.states[30])
+    .add_transition(whitespaces, State.states[30]) \
+    .add_transition([None], State.states[100])
 State.states[10] \
     .add_transition(digits, State.states[10]) \
     .add_transition(letters, State.states[90]) \
-    .add_transition(whitespaces, State.states[11])
+    .add_transition(whitespaces + [None], State.states[11])
 State.states[20] \
     .add_transition(digits + letters, State.states[20]) \
-    .add_transition(whitespaces, State.states[21])
+    .add_transition(whitespaces + [None], State.states[21])
 State.states[30] \
     .add_transition(whitespaces, State.states[30]) \
-    .add_transition(all_chars_except_whitespace, State.states[31])
+    .add_transition(all_chars_except_whitespace + [None], State.states[31])
 
 
 def main(file_name):
     with open(file_name, 'r') as input_file:
         scanner = Scanner(reader=Reader(input_file))
-        while scanner.get_next_token().token_type != EOF:
-            pass
-
+        scanner.get_tokens()
     with open('tokens.txt', 'w') as output_file:
         output_file.write(str(scanner))
     with open('symbol_table.txt', 'w') as output_file:
