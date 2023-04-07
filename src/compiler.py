@@ -26,7 +26,6 @@ def line_number_str(line_number):
     return f'{line_number}.\t' + '\b' * (len(str(line_number)) - 1)
 
 
-
 class SymbolTable:
     def __init__(self):
         # Here dictionary acts as an ordered set
