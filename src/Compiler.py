@@ -1,11 +1,13 @@
-# C- compiler (Phase 1 - Scanner)
-# Compiler Design | Sharif University of Technology
-# Soheil   Nazari  Mendejin    99102412
-# Alireza  Habibzadeh          99109393
+"""
+C- compiler (Phase 1 - Scanner)
+Compiler Design | Sharif University of Technology
+Soheil   Nazari  Mendejin    99102412
+Alireza  Habibzadeh          99109393
+"""
 
-import logging  # temporary
+import logging  # temporary=
 
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.INFO)  # Use logging.DEBUG for more info
 
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
 single_symbols = ['+', '-', '<', ':', ';', ',', '(', ')', '[', ']', '{', '}']
@@ -219,7 +221,8 @@ State.states[0] \
     .add_transition(equal_symbol, State.states[41]) \
     .add_transition(slash_symbol, State.states[50]) \
     .add_transition(star_symbol, State.states[54]) \
-    .add_transition(illegal_chars, State.states[93])
+    .add_transition(illegal_chars, State.states[93]) \
+    .otherwise(State.states[93])
 
 State.states[10] \
     .add_transition(digits, State.states[10]) \
