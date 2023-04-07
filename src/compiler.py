@@ -24,7 +24,7 @@ illegal_chars = [chr(i) for i in range(256) if chr(i) not in legal_chars]
 
 def line_number_str(line_number):
     # return f'{line_number}.\t' + '\b' * (len(str(line_number)) - 1)
-    return f"{str(line_number) + '.':<7}"
+    return f"{str(line_number) + '.':<7} "
 
 
 class SymbolTable:
