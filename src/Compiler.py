@@ -5,7 +5,7 @@ Soheil   Nazari  Mendejin    99102412
 Alireza  Habibzadeh          99109393
 """
 
-import logging  # temporary=
+import logging  # temporary
 
 logging.getLogger().setLevel(logging.INFO)  # Use logging.DEBUG for more info
 
