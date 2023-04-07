@@ -22,7 +22,7 @@ illegal_chars = [chr(i) for i in range(256) if chr(i) not in legal_chars]
 
 
 def line_number_str(line_number):
-    return f'{str(line_number) + ".":<7}'
+    return f'{str(line_number) + ".":<6} '
 
 
 class SymbolTable:
@@ -39,7 +39,7 @@ class SymbolTable:
     def __str__(self):
         s = ''
         for i, symbol in enumerate(self.symbols):
-            s += f'{line_number_str(i + 1)} {symbol}\n'
+            s += f'{line_number_str(i + 1)}{symbol}\n'
         return s
 
 
@@ -60,9 +60,6 @@ class Reader:
         self.char_index += 1
         return c
 
-    def close(self):
-        self.file.close()
-
     def readline(self):
         line = self.file.readline()
         if line:
@@ -80,7 +77,7 @@ class Token:
 
 
 class State:
-    states = dict()
+    states = {}
 
     def __init__(self, state_id, state_type, is_final, is_star, error=''):
         self.id = state_id
@@ -151,19 +148,19 @@ class Scanner:
             line_tokens = ''
             for token in self.tokens[line_number]:
                 if token.token_type not in hidden_tokens:
-                    line_tokens += ' ' + str(token)
+                    line_tokens += str(token) + ' '
             if line_tokens:
-                s += f'{line_number_str(line_number)}' + line_tokens + '\n'
+                s += line_number_str(line_number) + line_tokens + '\n'
         return s
 
     def repr_lexical_errors(self):
         if not self.lexical_errors:
-            return 'There is no lexical error.\n'
+            return 'There is no lexical error.'
         s = ''
         for line_number in self.lexical_errors:
             s += line_number_str(line_number)
             for token in self.lexical_errors[line_number]:
-                s += ' ' + str(token)
+                s += str(token) + ' '
             s += '\n'
         return s
 
