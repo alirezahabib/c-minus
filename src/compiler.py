@@ -23,8 +23,8 @@ illegal_chars = [chr(i) for i in range(256) if chr(i) not in legal_chars]
 
 
 def line_number_str(line_number):
-    # return f"{str(line_number) + '.':<7}"  # If we weren't out of our minds like the test cases
-    return f'{line_number}.\t' + '\b' * (len(str(line_number)) - 1)
+    # return f'{line_number}.\t' + '\b' * (len(str(line_number)) - 1)
+    return f"{str(line_number) + '.':<7}"
 
 
 class SymbolTable:
@@ -276,4 +276,5 @@ def main(file_name):
         output_file.write(scanner.repr_lexical_errors())
 
 
-main('input.txt')
+if __name__ == '__main__':
+    main('input.txt')
