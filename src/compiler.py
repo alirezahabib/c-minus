@@ -5,9 +5,10 @@ Soheil   Nazari  Mendejin    99102412
 Alireza  Habibzadeh          99109393
 """
 
-import logging  # temporary
+# import logging  # temporary
 
-logging.getLogger().setLevel(logging.INFO)  # Use logging.DEBUG for more info
+# logging.getLogger().setLevel(logging.INFO)  # Use logging.DEBUG for more info
+# Uncomment logging.* lines to see what's going on
 
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
 single_symbols = ['+', '-', '<', ':', ';', ',', '(', ')', '[', ']', '{', '}']
@@ -22,7 +23,7 @@ illegal_chars = [chr(i) for i in range(256) if chr(i) not in legal_chars]
 
 
 def line_number_str(line_number):
-    # return f"{str(line_number) + '.':<7}"  # If we weren't out of our minds
+    # return f"{str(line_number) + '.':<7}"  # If we weren't out of our minds like the test cases
     return f'{line_number}.\t' + '\b' * (len(str(line_number)) - 1)
 
 
@@ -115,7 +116,7 @@ class Scanner:
         token_name = ''
         while not self.current_state.is_final:
             c = self.reader.get_char()
-            logging.debug(f'current_state: {self.current_state.id}, next_char: {c}')
+            # logging.debug(f'current_state: {self.current_state.id}, next_char: {c}')
             self.current_state = self.current_state.next_state(next_char=c)
             if self.current_state.is_star:
                 self.reader.char_index -= 1
@@ -141,7 +142,7 @@ class Scanner:
                 self.lexical_errors.setdefault(line_number, []) \
                     .append(Token(token.token_value, self.current_state.error))
             self.tokens.setdefault(line_number, []).append(token)
-            logging.info(token)
+            # logging.info(token)
 
     def __str__(self):
         s = ''
