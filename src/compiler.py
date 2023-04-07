@@ -70,7 +70,7 @@ class Reader:
 
 
 class Token:
-    def __init__(self, token_type, token_value):
+    def __init__(self, token_type, token_value=''):
         self.token_type = token_type
         self.token_value = token_value
 
@@ -132,7 +132,7 @@ class Scanner:
         return Token(self.current_state.state_type, token_name)
 
     def get_tokens(self):
-        token = Token(token_type=START, token_value='')
+        token = Token(token_type=START)
         while token.token_type != EOF:
             self.current_state = self.start_state
             line_number = self.reader.line_number
@@ -276,5 +276,4 @@ def main(file_name):
         output_file.write(scanner.repr_lexical_errors())
 
 
-if __name__ == '__main__':
-    main('input.txt')
+main('input.txt')
