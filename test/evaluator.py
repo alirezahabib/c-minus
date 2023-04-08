@@ -121,7 +121,7 @@ def calc_tokens_score(expected: str, actual: str):
         tokens = [(d["type"], d["token"]) for d in
                   [m.groupdict() for m in TOKEN_PATTERN.finditer(line_parts["content"])]]
 
-        return (line_parts["linenum"], tokens)
+        return line_parts["linenum"], tokens
 
     return calc_score(
         expected, actual,
