@@ -16,6 +16,8 @@ def main(file_name):
         parser.parse()
     with open('parse_tree.txt', 'w') as output_file:
         output_file.write(parser.repr_parse_tree())
+    with open('syntax_errors.txt', 'w') as output_file:
+        output_file.write(parser.repr_syntax_errors())
     with open('tokens.txt', 'w') as output_file:
         output_file.write(str(scanner))
     with open('symbol_table.txt', 'w') as output_file:

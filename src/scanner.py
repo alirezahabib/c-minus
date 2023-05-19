@@ -152,13 +152,10 @@ class Scanner:
     def repr_lexical_errors(self):
         if not self.lexical_errors:
             return 'There is no lexical error.'
-        s = ''
-        for line_number in self.lexical_errors:
-            s += line_number_str(line_number)
-            for token in self.lexical_errors[line_number]:
-                s += str(token) + ' '
-            s += '\n'
-        return s
+        # line_number_str str(token1) str(token2)... (\n)
+        return '\n'.join(map(lambda line_number:
+                             line_number_str(line_number) + ' '.join(map(str, self.lexical_errors[line_number])),
+                             self.lexical_errors))
 
 
 # State and token types
