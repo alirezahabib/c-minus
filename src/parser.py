@@ -1,11 +1,12 @@
 from anytree import Node, RenderTree
 
 from scanner import Scanner
+from grammar import *
 
 
 class Parser:
     def __init__(self, scanner: Scanner):
-        self.root: Node = None # TODO
+        self.root: Node = None  # TODO
         self.scanner = scanner
 
     def parse(self):

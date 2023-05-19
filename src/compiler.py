@@ -4,6 +4,7 @@ Compiler Design | Sharif University of Technology
 Soheil   Nazari  Mendejin    99102412
 Alireza  Habibzadeh          99109393
 """
+
 from parser import Parser
 from scanner import Scanner, Reader, State
 
