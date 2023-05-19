@@ -5,9 +5,10 @@ Soheil   Nazari  Mendejin    99102412
 Alireza  Habibzadeh          99109393
 """
 
-# import logging  # temporary
+import logging  # Just for logging, you can remove it
 
-# logging.getLogger().setLevel(logging.INFO)  # Use logging.DEBUG for more info
+logging.getLogger().setLevel(logging.INFO)
+# logging.getLogger().setLevel(logging.DEBUG)  # For more info
 # Uncomment logging.* lines to see what's going on
 
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
