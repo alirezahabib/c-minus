@@ -1,17 +1,20 @@
 """
-C- compiler (Phase 1 - Scanner)
+C- compiler (Phase 2 - Parser)
 Compiler Design | Sharif University of Technology
 Soheil   Nazari  Mendejin    99102412
 Alireza  Habibzadeh          99109393
 """
-
+from parser import Parser
 from scanner import Scanner, Reader, State
 
 
 def main(file_name):
     with open(file_name, 'r') as input_file:
         scanner = Scanner(reader=Reader(input_file), start_state=State.states[0])
-        scanner.get_tokens()
+        parser = Parser(scanner)
+        parser.parse()
+    with open('parse_tree.txt', 'w') as output_file:
+        output_file.write(parser.repr_parse_tree())
     with open('tokens.txt', 'w') as output_file:
         output_file.write(str(scanner))
     with open('symbol_table.txt', 'w') as output_file:
