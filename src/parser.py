@@ -11,6 +11,7 @@ class Parser:
         self.root: Node = None  # TODO
         self.scanner = scanner
         self.syntax_errors = []  # [(line_number, error), ]
+        self.transition_table = {}
 
     def parse(self):
         current_token = self.scanner.get_next_token()
