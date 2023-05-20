@@ -2,6 +2,9 @@ from anytree import Node, RenderTree
 
 from scanner import Scanner
 
+import grammar
+import token
+
 
 class Parser:
     def __init__(self, scanner: Scanner):
@@ -10,8 +13,15 @@ class Parser:
         self.syntax_errors = []  # [(line_number, error), ]
 
     def parse(self):
-        # TODO
-        pass
+        current_token = self.scanner.get_next_token()
+        ignore = [token.WHITESPACE, token.COMMENT]
+
+        while current_token.type != token.EOF:
+            if current_token.type in ignore:
+                continue
+
+            current_token = self.scanner.get_next_token()
+            # TODO
 
     def repr_parse_tree(self):
         s = ''

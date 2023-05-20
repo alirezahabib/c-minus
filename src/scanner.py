@@ -1,3 +1,5 @@
+from token import *
+
 import logging  # Just for logging, you can remove it
 
 logging.getLogger().setLevel(logging.INFO)
@@ -63,15 +65,6 @@ class Reader:
         return line
 
 
-class Token:
-    def __init__(self, token_type, token_value=''):
-        self.token_type = token_type
-        self.token_value = token_value
-
-    def __str__(self):
-        return f'({self.token_type}, {self.token_value})'
-
-
 class State:
     states = {}
 
@@ -127,23 +120,25 @@ class Scanner:
 
     def get_tokens(self):
         token = Token(token_type=START)
-        while token.token_type != EOF:
+        while token.type != EOF:
             self.current_state = self.start_state
             line_number = self.reader.line_number
             token = self.get_next_token()
 
-            if token.token_type == PANIC:
+            if token.type == PANIC:
                 self.lexical_errors.setdefault(line_number, []) \
-                    .append(Token(token.token_value, self.current_state.error))
+                    .append(Token(token.value, self.current_state.error))
             self.tokens.setdefault(line_number, []).append(token)
             # logging.info(token)
 
     def __str__(self):
+        hidden_tokens = [COMMENT, WHITESPACE, START, PANIC, EOF]
+
         s = ''
         for line_number in self.tokens:
             line_tokens = ''
             for token in self.tokens[line_number]:
-                if token.token_type not in hidden_tokens:
+                if token.type not in hidden_tokens:
                     line_tokens += str(token) + ' '
             if line_tokens:
                 s += line_number_str(line_number) + line_tokens + '\n'
@@ -157,19 +152,6 @@ class Scanner:
                              line_number_str(line_number) + ' '.join(map(str, self.lexical_errors[line_number])),
                              self.lexical_errors))
 
-
-# State and token types
-NUM = 'NUM'
-ID = 'ID'
-KEYWORD = 'KEYWORD'
-SYMBOL = 'SYMBOL'
-COMMENT = 'COMMENT'
-WHITESPACE = 'WHITESPACE'
-START = 'START'
-PANIC = 'PANIC'
-EOF = 'EOF'
-
-hidden_tokens = [COMMENT, WHITESPACE, START, PANIC, EOF]
 
 State(0, START, is_final=False, is_star=False)
 
