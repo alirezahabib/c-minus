@@ -15,15 +15,15 @@ def main(file_name):
         parser = Parser(scanner)
         parser.parse()
     with open('parse_tree.txt', 'w') as output_file:
-        output_file.write(parser.repr_parse_tree())
+        parser.print_parse_tree(output_file)
     with open('syntax_errors.txt', 'w') as output_file:
         output_file.write(parser.repr_syntax_errors())
-    with open('tokens.txt', 'w') as output_file:
-        output_file.write(str(scanner))
-    with open('symbol_table.txt', 'w') as output_file:
-        output_file.write(str(scanner.symbol_table))
-    with open('lexical_errors.txt', 'w') as output_file:
-        output_file.write(scanner.repr_lexical_errors())
+    # with open('tokens.txt', 'w') as output_file:
+    #     output_file.write(str(scanner))
+    # with open('symbol_table.txt', 'w') as output_file:
+    #     output_file.write(str(scanner.symbol_table))
+    # with open('lexical_errors.txt', 'w') as output_file:
+    #     output_file.write(scanner.repr_lexical_errors())
 
 
 if __name__ == '__main__':

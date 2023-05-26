@@ -1,10 +1,10 @@
-from token import *
+# import logging  # Just for logging, you can remove it
 
-import logging  # Just for logging, you can remove it
-
-logging.getLogger().setLevel(logging.INFO)
+# logging.getLogger().setLevel(logging.INFO)
 # logging.getLogger().setLevel(logging.DEBUG)  # For more info
 # Uncomment logging.* lines to see what's going on
+
+from ctoken import *
 
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
 single_symbols = ['+', '-', '<', ':', ';', ',', '(', ')', '[', ']', '{', '}']
@@ -99,8 +99,10 @@ class Scanner:
         self.tokens = {}  # line_number: list of tokens
         self.lexical_errors = {}  # line_number: list of errors
 
-    def get_next_token(self) -> Token:
+    def get_next_token(self):
+        self.current_state = self.start_state
         token_name = ''
+
         while not self.current_state.is_final:
             c = self.reader.get_char()
             # logging.debug(f'current_state: {self.current_state.id}, next_char: {c}')
@@ -121,7 +123,6 @@ class Scanner:
     def get_tokens(self):
         token = Token(token_type=START)
         while token.type != EOF:
-            self.current_state = self.start_state
             line_number = self.reader.line_number
             token = self.get_next_token()
 

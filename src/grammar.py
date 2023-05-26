@@ -74,10 +74,10 @@ non_terminals = [
 
 first = {
     "Program": [
-        "int", "void", "EPSILON"
+        "int", "void", "epsilon"
     ],
     "Declaration-list": [
-        "int", "void", "EPSILON"
+        "int", "void", "epsilon"
     ],
     "Declaration": [
         "int", "void"
@@ -99,13 +99,13 @@ first = {
         "int", "void"
     ],
     "Param-list": [
-        ",", "EPSILON"
+        ",", "epsilon"
     ],
     "Param": [
         "int", "void"
     ],
     "Param-prime": [
-        "[", "EPSILON"
+        "[", "epsilon"
     ],
     "Compound-stmt": ["{"],
     "Statement-list": [
@@ -118,7 +118,7 @@ first = {
         "if",
         "repeat",
         "return",
-        "EPSILON"
+        "epsilon"
     ],
     "Statement": [
         "ID",
@@ -156,7 +156,7 @@ first = {
         "+",
         "-",
         "*",
-        "EPSILON"
+        "epsilon"
     ],
     "H": [
         "=",
@@ -165,7 +165,7 @@ first = {
         "+",
         "-",
         "*",
-        "EPSILON"
+        "epsilon"
     ],
     "Simple-expression-zegond": [
         "NUM", "("
@@ -177,10 +177,10 @@ first = {
         "+",
         "-",
         "*",
-        "EPSILON"
+        "epsilon"
     ],
     "C": [
-        "<", "==", "EPSILON"
+        "<", "==", "epsilon"
     ],
     "Relop": [
         "<", "=="
@@ -193,13 +193,13 @@ first = {
         "+",
         "-",
         "*",
-        "EPSILON"
+        "epsilon"
     ],
     "Additive-expression-zegond": [
         "NUM", "("
     ],
     "D": [
-        "+", "-", "EPSILON"
+        "+", "-", "epsilon"
     ],
     "Addop": [
         "+", "-"
@@ -208,36 +208,36 @@ first = {
         "ID", "NUM", "("
     ],
     "Term-prime": [
-        "(", "*", "EPSILON"
+        "(", "*", "epsilon"
     ],
     "Term-zegond": [
         "NUM", "("
     ],
     "G": [
-        "*", "EPSILON"
+        "*", "epsilon"
     ],
     "Factor": [
         "ID", "NUM", "("
     ],
     "Var-call-prime": [
-        "[", "(", "EPSILON"
+        "[", "(", "epsilon"
     ],
     "Var-prime": [
-        "[", "EPSILON"
+        "[", "epsilon"
     ],
     "Factor-prime": [
-        "(", "EPSILON"
+        "(", "epsilon"
     ],
     "Factor-zegond": [
         "NUM", "("
     ],
     "Args": [
-        "ID", "NUM", "(", "EPSILON"
+        "ID", "NUM", "(", "epsilon"
     ],
     "Arg-list": [
         "ID", "NUM", "("
     ],
-    "Arg-list-prime": [",", "EPSILON"]
+    "Arg-list-prime": [",", "epsilon"]
 }
 
 follow = {
@@ -597,8 +597,8 @@ follow = {
 }
 
 rules = {
-    'Program': [['Declaration-list']],
-    'Declaration-list': [['Declaration', 'Declaration-list'], ['EPSILON']],
+    'Program': [['Declaration-list', '$']],
+    'Declaration-list': [['Declaration', 'Declaration-list'], ['epsilon']],
     'Declaration': [['Declaration-initial', 'Declaration-prime']],
     'Declaration-initial': [['Type-specifier', 'ID']],
     'Declaration-prime': [['Fun-declaration-prime'], ['Var-declaration-prime']],
@@ -606,11 +606,11 @@ rules = {
     'Fun-declaration-prime': [['(', 'Params', ')', 'Compound-stmt']],
     'Type-specifier': [['int'], ['void']],
     'Params': [['int', 'ID', 'Param-prime', 'Param-list'], ['void']],
-    'Param-list': [[',', 'Param', 'Param-list'], ['EPSILON']],
+    'Param-list': [[',', 'Param', 'Param-list'], ['epsilon']],
     'Param': [['Declaration-initial', 'Param-prime']],
-    'Param-prime': [['[', ']'], ['EPSILON']],
+    'Param-prime': [['[', ']'], ['epsilon']],
     'Compound-stmt': [['{', 'Declaration-list', 'Statement-list', '}']],
-    'Statement-list': [['Statement', 'Statement-list'], ['EPSILON']],
+    'Statement-list': [['Statement', 'Statement-list'], ['epsilon']],
     'Statement': [['Expression-stmt'], ['Compound-stmt'], ['Selection-stmt'], ['Iteration-stmt'], ['Return-stmt']],
     'Expression-stmt': [['Expression', ';'], ['break', ';'], [';']],
     'Selection-stmt': [['if', '(', 'Expression', ')', 'Statement', 'else', 'Statement']],
@@ -622,23 +622,23 @@ rules = {
     'H': [['=', 'Expression'], ['G', 'D', 'C']],
     'Simple-expression-zegond': [['Additive-expression-zegond', 'C']],
     'Simple-expression-prime': [['Additive-expression-prime', 'C']],
-    'C': [['Relop', 'Additive-expression'], ['EPSILON']],
+    'C': [['Relop', 'Additive-expression'], ['epsilon']],
     'Relop': [['<'], ['==']],
     'Additive-expression': [['Term', 'D']],
     'Additive-expression-prime': [['Term-prime', 'D']],
     'Additive-expression-zegond': [['Term-zegond', 'D']],
-    'D': [['Addop', 'Term', 'D'], ['EPSILON']],
+    'D': [['Addop', 'Term', 'D'], ['epsilon']],
     'Addop': [['+'], ['-']],
     'Term': [['Factor', 'G']],
     'Term-prime': [['Factor-prime', 'G']],
     'Term-zegond': [['Factor-zegond', 'G']],
-    'G': [['*', 'Factor', 'G'], ['EPSILON']],
-    'Factor': [['(', 'Expression', ')'], ['Var-call-prime'], ['NUM']],
+    'G': [['*', 'Factor', 'G'], ['epsilon']],
+    'Factor': [['(', 'Expression', ')'], ['ID', 'Var-call-prime'], ['NUM']],
     'Var-call-prime': [['(', 'Args', ')'], ['Var-prime']],
-    'Var-prime': [['[', 'Expression', ']'], ['EPSILON']],
-    'Factor-prime': [['Args'], ['EPSILON']],
+    'Var-prime': [['[', 'Expression', ']'], ['epsilon']],
+    'Factor-prime': [['(', 'Args', ')'], ['epsilon']],
     'Factor-zegond': [['(', 'Expression', ')'], ['NUM']],
-    'Args': [['Arg-list'], ['EPSILON']],
+    'Args': [['Arg-list'], ['epsilon']],
     'Arg-list': [['Expression', 'Arg-list-prime']],
-    'Arg-list-prime': [[',', 'Expression', 'Arg-list-prime'], ['EPSILON']]
+    'Arg-list-prime': [[',', 'Expression', 'Arg-list-prime'], ['epsilon']]
 }
