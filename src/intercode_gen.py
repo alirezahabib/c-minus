@@ -364,6 +364,108 @@ class CodeGenerator:
     def ptype(self):
         self.pb.add_code("INPUT", self.ss.pop(), None, None)
 
+    #declare id
+    def did(self, token):
+        # search in symbol table
+        # if found in current scope raise error
+        # if not found
+        # add to symbol table
+        # token will be the lexeme of the variable
+        the_row = self.symbol_table.lookup(token, self.start_scope, False)
+        if the_row is not None and the_row[type_key] == "param":
+            # this means that the variable is already declared and is the function parameter,
+            # and we want to redefine it
+            del the_row[type_key]
+
+        self.symbol_table.insert(token)
+        if self.semantic_stack[-1] == "void":
+            self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
+                                                        error=self.error_void_type,
+                                                        first_op=token)
+
+        self.symbol_table.modify_last_row(kind=kind, type=self.semantic_stack[-1])
+        self.program_block_insert(
+            operation=":=",
+            first_op="#0",
+            second_op=self.symbol_table.get_last_row()[address_key],
+        )
+        self.semantic_stack.pop()
+    # declare var
+    def darray(self):
+        # add to symbol table
+        self.symbol_table.modify_attributes_last_row(num_attributes=self.semantic_stack[-1])
+        self.semantic_stack.pop()
+
+    # start function scope
+    def sfunctions(self,token):
+        # start of function declaration
+        self.symbol_table.modify_kind_last_row("func")
+        # add the row_id of function in symbol table to stack so
+        # we can modify num attributes of this function later
+        self.semantic_stack.append(self.symbol_table.get_id_last_row())
+        if self.symbol_table.get_last_row()['type'] == "void":
+            self.semantic_analyzer.pop_error()
+        self.add_scope(token)
+        # add the counter for parameters
+        self.semantic_stack.append(0)
+
+    # end function scope
+    def efunctions(self):
+        # end of function declaration
+        self.symbol_table.modify_attributes_row(row_id=self.semantic_stack[-2],
+                                                num_attributes=self.semantic_stack[-1],
+                                                arr_func=False)
+        self.pop_last_n(2)
+
+    # param input
+    def pinput(self):
+        self.symbol_table.modify_kind_last_row("param")
+        counter = self.semantic_stack.pop()
+        counter += 1
+        self.semantic_stack.append(counter)
+
+    # declare array for function
+    def darray_func(self):
+        # self.push_num("0")
+        # self.declare_array(token)
+
+        self.symbol_table.modify_attributes_last_row(num_attributes=self.semantic_stack[-1])
+        self.semantic_stack.pop()
+
+    # declare var
+    def dvar(self):
+
+    # expression stmt jump break save
+    def jp_break_save(self):
+
+    # save if
+    def save_if(self):
+
+    # label repeat
+    def jp_repeat(self):
+        # jump back to label if condition is true
+        # also check if there were any break statements before
+        self.num_open_repeats -= 1
+        temp_until_condition = self.semantic_stack.pop()  # the value that until should decide to jump based on it
+        # check breaks
+        while len(self.semantic_stack) > 0 and self.semantic_stack[-1] == "break":
+            self.program_block_modification(self.semantic_stack[-2], operation="JP", first_op=self.PC + 1)
+            self.pop_last_n(2)
+        # jump back
+        self.program_block_insert(operation="JPF", first_op=temp_until_condition,
+                                  second_op=self.semantic_stack[-1])
+        self.pop_last_n(1)
+
+    # assign
+    def assign(self):
+
+    # array address
+    def array_address(self):
+
+    # assign array
+
+
+
     '''
     we want to add appropriate action symbol to the grammar below and then define a semantic routine in the shape of
     a function for each action symbol. the grammar is as follows:
@@ -413,7 +515,7 @@ class CodeGenerator:
     44. Arg-list-prime -> , Expression Arg-list-prime | EPSILON
     '''
 
-
+push_op
 
 class CodeGenerator:
 
@@ -450,64 +552,10 @@ class CodeGenerator:
             return
 
         action_symbol = action_symbol[1:]
-        if action_symbol == "declare_id":
-            self.declare_id(token)
-        elif action_symbol == "declare_array":
-            self.declare_array(token)
-        elif action_symbol == "push_type":
-            self.push_type(token)
-        elif action_symbol == "do_op":
-            self.do_op(token)
-        elif action_symbol == "mult":
-            self.mult(token)
-        elif action_symbol == "push_op":
-            self.push_op(token)
-        elif action_symbol == "label":
-            self.label(token)
-        elif action_symbol == "until":
-            self.until(token)
-        elif action_symbol == "array_calc":
-            self.array_calc(token)
-        elif action_symbol == "jpf_save":
-            self.jpf_save(token)
-        elif action_symbol == "save":
-            self.save(token)
-        elif action_symbol == "jp":
-            self.jp(token)
-        elif action_symbol == "print":
-            self.print(token)
-        elif action_symbol == "push_num":
-            self.push_num(token)
-        elif action_symbol == "id":
-            self.id(token)
-        elif action_symbol == "assign":
-            self.assign(token)
-        elif action_symbol == "push_eq":
-            self.push_eq(token)
-        elif action_symbol == "break":
-            self.break_check(token)
-        elif action_symbol == "add_scope":
-            self.add_scope(token)
-        elif action_symbol == "start_func":
-            self.start_func(token)
-        elif action_symbol == "add_param":
-            self.add_param(token)
-        elif action_symbol == "end_func_params":
-            self.end_func_params(token)
-        elif action_symbol == "start_call":
-            self.start_call(token)
-        elif action_symbol == "end_call":
-            self.end_call(token)
-        elif action_symbol == "declare_entry_array":
-            self.declare_entry_array(token)
-        elif action_symbol == "return":
-            self.return_command(token)
-        elif action_symbol == "arg_input":
-            self.arg_input(token)
-        elif action_symbol == "end_scope":
-            self.end_scope(token)
-        elif action_symbol == "no_return":
-            self.no_return(token)
+        method = getattr(self, action_symbol, None)
+        if method:
+            method(token)
+
 
     def pop_last_n(self, n):
         # pop last n elements from semantic stack
