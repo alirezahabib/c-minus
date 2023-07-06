@@ -200,6 +200,10 @@ class PB:
         self.block.append([operation, op1, op2, op3])
         self.line += 1
 
+    def add_to_index(self, index, operation, op1, op2=None, op3=None):
+        self.block.insert(index, [operation, op1, op2, op3])
+        self.line += 1
+
     def get_line(self):
         return self.line
 
@@ -221,6 +225,7 @@ class CodeGenerator:
         self.ss = SS()
         self.pb = PB()
         self.st = st.SymbolTable()
+        self.loop = []
         ...
 
     def add(self):
@@ -290,15 +295,15 @@ class CodeGenerator:
         # op1 = self.ss.pop()
         addr = self.ss.pop_mult(2)
         op1 = self.ss.pop()
-        -1 to be implemented
-        self.pb.add_code[addr]("JPF", op1, self.pb.get_line(), None)
+        # -1 to be implemented
+        self.pb.add_to_index(addr, "JPF", op1, self.pb.get_line(), None)
 
         # ...
 
     def jp(self):
         addr = self.ss.pop()
-        -1 to be implemented
-        self.pb.add_code[addr]("JP", self.pb.get_line(), None, None)
+        # -1 to be implemented
+        self.pb.add_to_index(addr, "JP", self.pb.get_line(), None, None)
         # ...
 
     def output(self):
@@ -314,6 +319,47 @@ class CodeGenerator:
 
         sem_func(*params)
         # ...
+    def pid(self, name):
+        self.ss.push(name)
+    def pconst(self, value):
+        self.ss.push(value)
+
+    def save(self):
+        self.ss.push(self.pb.get_line())
+        self.pb.add_code(None,None)
+
+
+    # def jpf(self):
+    #     addr = self.ss.pop()
+    #     self.pb.add_code[addr]("JPF", self.ss.pop(), self.pb.get_line(), None)
+
+    def jpf_save(self):
+        addr = self.ss.pop()
+        # -1 to be implemented
+        self.pb.add_to_index(addr, "JPF", self.ss.pop(), self.pb.get_line()+1, None)
+        self.pb.add_code(None,None)
+        self.ss.push(self.pb.get_line())
+
+
+    # -1 to be refactored
+    def loop(self):
+        self.loop.append(self.pb.get_line()+1)
+        self.pb.add_code(None,None)
+    def until(self):
+        expr = self.ss.pop()
+        addr = self.ss.pop()
+        self.pb.add_code("JPF", expr, addr, None)
+        addr = self.pb.get_line()
+        for address in self.loop:
+            self.pb.add_to_index(address, "JP", addr, None, None)
+
+
+
+
+
+
+
+
 
 
 
