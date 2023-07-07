@@ -46,6 +46,9 @@ class Parser:
                 break
         return first
 
+    def get_scanner(self):
+        return self.scanner
+
     def get_next_token(self):
         ignore = [ctoken.WHITESPACE, ctoken.COMMENT]
         while True:
