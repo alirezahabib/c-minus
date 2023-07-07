@@ -705,6 +705,8 @@ class CodeGenerator:
 
     def end_loop(self):
 
+    def mult(self):
+
 
 
 
