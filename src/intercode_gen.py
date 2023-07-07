@@ -433,13 +433,13 @@ class CodeGenerator:
         self.semantic_stack.pop()
 
     # declare var
-    def dvar(self):
+    # def dvar(self):
 
     # expression stmt jump break save
-    def jp_break_save(self):
+    # def jp_break_save(self):
 
     # save if
-    def save_if(self):
+    # def save_if(self):
 
     # label repeat
     def jp_repeat(self):
@@ -457,10 +457,10 @@ class CodeGenerator:
         self.pop_last_n(1)
 
     # assign
-    def assign(self):
-
-    # array address
-    def array_address(self):
+    # def assign(self):
+    #
+    # # array address
+    # def array_address(self):
 
     # assign array
 
@@ -514,6 +514,178 @@ class CodeGenerator:
     43. Arg-list -> Expression Arg-list-prime
     44. Arg-list-prime -> , Expression Arg-list-prime | EPSILON
     '''
+    def p_type(self):
+        # p_type
+        # push type into the semantic stack
+        data_type = self._current_token[1]
+        self._semantic_stack.append(data_type)
+
+    def p_id_index(self): # p_id_index
+        # push index of identifier into the semantic stack
+        lexeme = self._current_token[1]
+        index = self._scanner.get_symbol_index(lexeme)
+        self._semantic_stack.append(index)
+    def p_id(self):# p_id
+        # push address of identifier into the semantic stack
+        lexeme = self._current_token[1]
+        index = self._scanner.get_symbol_index(lexeme)
+        address = self._scanner.symbol_table["address"][index]
+        self._semantic_stack.append(address)
+
+    def dec_var(self):  # declare_var
+        # assign an address to the identifier, assign 0 to the variable in the program block
+        # and update identifier's row in the symbol table
+        data_type = self._semantic_stack[-2]
+        index = self._semantic_stack[-1]
+        self.pop_semantic_stack(2)
+
+        self._program_block.append(f"(ASSIGN, #0, {self._current_data_address},\t)")
+        self._scanner.update_symbol(index,
+                                    symbol_type="var",
+                                    size=0,
+                                    data_type=data_type,
+                                    scope=len(self._scanner.scope_stack),
+                                    address=self._current_data_address)
+        self._current_data_address += 4
+
+    def dec_array(self):  # declare_array
+        # assign an address to the identifier, assign 0 to the start of the array in the program block
+        # and update identifier's row in the symbol table
+        data_type = self._semantic_stack[-3]
+        index = self._semantic_stack[-2]
+        size = self._semantic_stack[-1]
+        self.pop_semantic_stack(3)
+
+        self._program_block.append(f"(ASSIGN, #0, {self._current_data_address},\t)")
+        self._scanner.update_symbol(index,
+                                    symbol_type="array",
+                                    size=size,
+                                    data_type=data_type,
+                                    scope=len(self._scanner.scope_stack),
+                                    address=self._current_data_address)
+        self._current_data_address += 4 * size
+
+    def dec_func(self):  # declare_func
+        # update identifier's row in the symbol table, initialize next scope
+        # and if function is "main" add a jump to the start of function
+        data_type = self._semantic_stack[-2]
+        index = self._semantic_stack[-1]
+        self.pop_semantic_stack(2)
+
+        self._scanner.update_symbol(index,
+                                    symbol_type="function",
+                                    size=0,
+                                    data_type=data_type,
+                                    scope=len(self._scanner.scope_stack),
+                                    address=len(self._program_block))
+        self._scanner.scope_stack.append(index + 1)
+        if self._scanner.symbol_table["lexeme"][index] == "main":
+            line_number = self._semantic_stack[-1]
+            self.pop_semantic_stack(1)
+            self._program_block[line_number] = f"(JP, {len(self._program_block)},\t,\t)"
+
+    def end_func(self):  # end_function
+        # deletes the current scope
+        scope_start = self._scanner.scope_stack.pop()
+        self._scanner.pop_scope(scope_start)
+
+    # def p_type
+
+    def break_jp(self):  # break_jp
+        # add an indirect jump to the top of the break stack
+        break_temp = self._break_stack[-1]
+        self._program_block.append(f"(JP, @{break_temp},\t,\t)")
+
+    def save(self):  # save
+        # save an instruction in program block's current line
+        current_line_number = len(self._program_block)
+        self._semantic_stack.append(current_line_number)
+        self._program_block.append(None)
+
+    def jpf_save(self): # jpf_save
+        # add a JPF instruction in line number with a condition both stored in semantic stack to the next line
+        # and save an instruction in program block's current line
+        line_number = self._semantic_stack[-1]
+        condition = self._semantic_stack[-2]
+        self.pop_semantic_stack(2)
+
+        current_line_number = len(self._program_block)
+        self._program_block[line_number] = f"(JPF, {condition}, {current_line_number + 1},\t)"
+        self._semantic_stack.append(len(self._program_block))
+        self._program_block.append(None)
+
+    def jp(self): # jp
+        # add a JP instruction in line number stored in semantic stack to the current line
+        line_number = self._semantic_stack[-1]
+        self.pop_semantic_stack(1)
+
+        current_line_number = len(self._program_block)
+        self._program_block[line_number] = f"(JP, {current_line_number},\t,\t)"
+
+    def assign(self):  # assign
+        # add an assign instruction
+        source_var = self._semantic_stack[-1]
+        dest_var = self._semantic_stack[-2]
+        self.pop_semantic_stack(1)
+
+        self._program_block.append(f"(ASSIGN, {source_var}, {dest_var},\t)")
+
+    def array_access(self):  # array_access
+        # calculate selected array element address and save result temp in semantic stack
+        array_index = self._semantic_stack[-1]
+        array_base_address = self._semantic_stack[-2]
+        self.pop_semantic_stack(2)
+
+        temp1 = self.get_temp()
+        temp2 = self.get_temp()
+        self._program_block.append(f"(MULT, #4, {array_index}, {temp1})")
+        self._program_block.append(f"(ADD, {temp1}, #{array_base_address}, {temp2})")
+        self._semantic_stack.append(f"@{temp2}")
+
+    def push_op(self): # p_op
+        # push operation to semantic stack
+        operation = self._current_input
+        self._semantic_stack.append(operation)
+
+    def op(self):  # op
+        # add operation instruction
+        operand_1 = self._semantic_stack[-3]
+        operation = self._semantic_stack[-2]
+        operand_2 = self._semantic_stack[-1]
+        self.pop_semantic_stack(3)
+        if operation == "==":
+            assembly_operation = "EQ"
+        elif operation == "<":
+            assembly_operation = "LT"
+        elif operation == "*":
+            assembly_operation = "MULT"
+        elif operation == "/":
+            assembly_operation = "DIV"
+        elif operation == "+":
+            assembly_operation = "ADD"
+        elif operation == "-":
+            assembly_operation = "SUB"
+        else:
+            raise ValueError("Operation is invalid!")
+        dest = self.get_temp()
+        self._program_block.append(f"({assembly_operation}, {operand_1}, {operand_2}, {dest})")
+        self._semantic_stack.append(dest)
+
+    def p_num(self): # p_num
+        # push number into the semantic stack
+        number = int(self._current_token[1])
+        self._semantic_stack.append(number)
+
+    def p_num_tmp(self): # p_num_temp
+        # push #number into the semantic stack
+        number = int(self._current_token[1])
+        self._semantic_stack.append(f"#{number}")
+
+
+
+
+
+
 
 
 
