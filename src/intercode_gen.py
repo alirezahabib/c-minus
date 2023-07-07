@@ -681,6 +681,31 @@ class CodeGenerator:
         number = int(self._current_token[1])
         self._semantic_stack.append(f"#{number}")
 
+    # push type / get_id_type / p_input
+    def p_type(self): # p_type
+        # push type into the semantic stack
+        data_type = self._current_token[1]
+        self._semantic_stack.append(data_type)
+
+    def break_jp(self): # break_jp
+        # add an indirect jump to the top of the break stack
+        break_temp = self._break_stack[-1]
+        self._program_block.append(f"(JP, @{break_temp},\t,\t)")
+
+    def save_break_tmp(self): # save_break_temp
+        # save a temp in break stack
+        dest = self.get_temp()
+        self._break_stack.append(dest)
+
+    def label(self):
+
+    def start_loop(self):
+
+    def repeat(self):
+
+    def end_loop(self):
+
+
 
 
 
