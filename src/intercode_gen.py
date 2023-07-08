@@ -1,3 +1,127 @@
+'''
+
+1
+Introduction
+In programming assignment II, you implemented a top-down parser for C-minus, using the transition
+diagrams method. In this assignment you are to implement an intermediate code generator for
+certain parts of C-minus. This assignment also includes an optional part, which is the implementation
+of a simple semantic analyzer for C-minus (see section 6). Note that you may use codes from text
+books, with a reference to the used book in your code. However, using codes from the internet
+and/or other students in this course is strictly forbidden and will result in Fail grade in the course.
+Besides, even if you did not implement the parser in the previous assignment, you may not use the
+parsers from other students/groups. In such a case, you must implement the parser, too.
+2
+Intermediate Code Generator
+Specification
+In this assignment, you will implement the intermediate code generator with the following
+characteristics:
+• The code generator is called by the parser to perform a code generation task, which can be
+modifying the semantic stack and/or generating a number of three address codes.
+• Code generation is performed in the same pass as other compilation tasks (because the
+compiler is supposed to be a one-pass compiler).
+• The parser calls a function called 'code_gen' and sends an action symbol as an argument to
+'code_gen' at appropriate times during parsing.
+• The code generator (i.e., the 'code_gen' function) executes the appropriate semantic routine
+associated with the received action symbol (based on the technique introduced in Lecture 8).
+• Generated three-address codes are saved in an output text file called 'output.txt'.
+3
+Augmented C-minus Grammar
+To implement your intermediate code generator, you should first add the required action symbols to
+the grammar of C-minus that was included in section 3 of programming assignment II. For each action
+symbol, you need to write an appropriate semantic routine in Python that performs the required code
+generation tasks, such as modifying the semantic stack and/or generating a number of three address
+codes. Note that you should not change the given grammar in any way other than adding the
+required action symbols to the right-hand side of the production rules.
+4
+Intermediate Code Generation
+The intermediate code generation is performed with the same method that was introduced in Lecture
+8. In the first part of implementing intermediate code generation in this assignment, all constructs
+supported by the given C-minus grammar are to be implemented except for: return statements and
+function calls. Therefore, the sample/test 'input.txt' files for this part of the assignment will be a
+simple C-minus program which does not contain any type of error. In implementing the required
+sematic routines for the intermediate code generation, you should pay attention to the following
+points:
+• Every input program may include only a number of global variables and contain just a main
+function with the signature 'void main (void)'.
+• All local variables of the main function are declared at the beginning of the function. That is,
+there will not be any declaration of variables inside other constructs such as while loops.
+• In conditional statements such as 'if' and/or 'while', if the expression value is zero, it will be
+regarded as a 'false' condition; otherwise, it will be regarded to be 'true'. Moreover, the result
+of a 'relop' operation that is true, will be '1'. Alternatively, if the result of a 'relop' operation
+is 'false', its value will be '0'.
+• You should implicitly define a function called 'output' with the signature 'void output (int a);'
+which prints its argument (an integer) as the main program's output.
+
+
+5 Available Three address Codes
+In this project, you can only use the following three address codes. Three address codes produced
+by your compiler will be executed by an interpreter called 'Tester', which can only interpret the
+following three address codes. Otherwise, the tester program fails to run your three address codes.
+Please note that the single and most important factor in evaluating your solution to this assignment
+is that the output of your intermediate code generator will be successfully interpreted by the
+'Tester' program and produce the expected output value. The 'Tester' program and its help file are
+released together with this description.
+Three address
+code
+Explanation
+1 (ADD, A1, A2, R) The contents of A1 and A2 are added. The result will be saved in R.
+2 (MULT, A1, A2, R) The contents of A1 and A2 are multiplied. The result will be saved in R.
+3 (SUB, A1, A2, R) The content of A2 is subtracted from A1. The result will be saved in R.
+4 (EQ, A1, A2, R) The contents of A1 and A2 are compared. If they are equal, '1' (i.e., as a
+true value) will be saved in R; otherwise, '0' (i.e., as a false value) will be
+saved in R.
+5 (LT, A1, A2, R) If the content of A1 is less than the content of A2, '1' will be saved in R;
+otherwise, '0' will be saved in R.
+6 (ASSIGN, A, R, ) The content of A is assigned to R.
+7 (JPF, A, L, ) If content of A is 'false', the control will be transferred to L; otherwise,
+next three address code will be executed.
+8 (JP, L, , ) The control is transferred to L.
+9 (PRINT, A, , ) The content of A will be printed to the standard output.
+As it was explained in Lecture 8, in three address codes, you can use three addressing modes of direct
+address (e.g., 100), indirect address (e.g., @100), and immediate value (e.g., #100). For simplicity, you
+can suppose that all memory locations are allocated statically. In other words, we don't have a runtime
+stack or heap. Also, assume that four bytes of memory are required to store an integer. Therefore, the
+address of all data memory locations is divisible by four. The following figures show a sample C-minus
+program and the three address codes produced for it. Note that each three address code is preceded
+by a line number starting from zero. The tester program outputs a value of '15' by running the three
+address codes in the given sample. For more information about the tester program and the formatting
+of the three address codes, please read the provided help file very carefully. As it was mentioned
+earlier, the grading of the code generation part of this assignment is solely based on whether or not
+the produced three address code can be successfully run by the Tester program and produce the
+expected value.
+Note that the three address codes produced for an input program such as the given sample in Fig. 1 do
+not need to be identical to the code given in Fig 2. There can be a virtually infinite number of correct
+three-address codes for such programs. As long as the produced code can be executed by the Tester
+program and prints the expected value(s), it is acceptable.
+
+lineno code
+1 void main( void ) {
+2 int prod;
+3 int i;
+4 prod = 1;
+5 i = 1;
+6 repeat {
+7 prod = i * prod;
+8 i = i + 2;
+9 } until ( 6 < i )
+10 output (prod);
+11 }
+Fig. 1 C-minus input sample (saved in “input.txt”)
+
+produced three address codes
+0 (JP, 1, , )
+1 (ASSIGN, #1, 100, )
+2 (ASSIGN, #1, 104, )
+3 (MULT, 104, 100, 500)
+4 (ASSIGN, 500, 100, )
+5 (ADD, 104, #2, 504)
+6 (ASSIGN, 504, 104, )
+7 (LT, #6, 104, 508)
+8 (JPF, 508, 3, )
+9 (PRINT, 100, , )
+Fig. 2 'Output.txt' Sample
+
+'''
 
 from enum import Enum
 
@@ -71,13 +195,6 @@ class SS:
         return str(self.stack)
 
 
--1
-to
-be
-refactored
-probably
-
-
 class Address:
     def __init__(self, address):
         self.address = address
@@ -111,9 +228,6 @@ class PB:
         self.block.insert(index, [operation, op1, op2, op3])
         self.line += 1
 
-    def get_line(self):
-        return self.line
-
     def get_tmp_address(self):
         self.last_tmp += 4
         return Address(self.last_tmp.address)
@@ -127,11 +241,44 @@ class PB:
     def get_address(self):
         self.last_addr += 4
         return Address(self.last_addr.address)
+
     def get_temp(self):
         temp = self.last_tmp
         self.last_tmp += 4
 
         return temp
+
+    def add_code_str(self, code):
+        code_split = code.split(",")
+        if code_split[3] == "\t":
+            code_split[3] = None
+        if code_split[2] == "\t":
+            code_split[2] = None
+        if len(code_split) == 4:
+            self.add_code(code_split[0], code_split[1], code_split[2], code_split[3])
+        elif len(code_split) == 3:
+            self.add_code(code_split[0], code_split[1], code_split[2])
+        elif len(code_split) == 2:
+            self.add_code(code_split[0], code_split[1])
+        # self.block.append([code])
+        # self.line += 1
+
+    def add_code_to_index_str(self, index, code):
+        code_split = code.split(",")
+        if code_split[3] == "\t":
+            code_split[3] = None
+        if code_split[2] == "\t":
+            code_split[2] = None
+
+        if len(code_split) == 4:
+            self.add_to_index(index, code_split[0], code_split[1], code_split[2], code_split[3])
+        elif len(code_split) == 3:
+            self.add_to_index(index, code_split[0], code_split[1], code_split[2])
+        elif len(code_split) == 2:
+            self.add_to_index(index, code_split[0], code_split[1])
+
+        # self.block.append([code])
+        # self.line += 1
 
 
 # main class
@@ -146,7 +293,6 @@ class CodeGenerator:
         self.break_stack = []
         # ...
 
-
     '''
     this must be implemented in parser part so we get _current_token and current_input as used:
         def _update_current_token(self):
@@ -159,6 +305,7 @@ class CodeGenerator:
                 self._current_input = self._current_token[0]
     '''
 
+    # push type / get_id_type / p_input
     def p_type(self):
         # p_type
         # push type into the semantic stack
@@ -320,7 +467,7 @@ class CodeGenerator:
     def break_jp(self):  # break_jp
         # add an indirect jump to the top of the break stack
         break_temp = self.break_stack[-1]
-        self.pb.add_code(f"(JP, @{break_temp})")
+        self.pb.add_code_str(f"(JP, @{break_temp})")
 
     def save(self):  # save
         # save an instruction in program block's current line
@@ -337,7 +484,7 @@ class CodeGenerator:
         # self.pop_semantic_stack(2)
 
         current_line_number = self.pb.get_len()
-        self.pb.add_to_index(line_number, f"(JPF, {condition}, {current_line_number + 1})")
+        self.pb.add_code_to_index_str(line_number, f"(JPF, {condition}, {current_line_number + 1})")
         self.ss.push(self.pb.get_len())
         self.pb.add_code(None, None)
 
@@ -347,7 +494,7 @@ class CodeGenerator:
         # self.pop_semantic_stack(1)
 
         current_line_number = self.pb.get_len()
-        self.pb.add_to_index(line_number, f"(JP, {current_line_number},\t,\t)")
+        self.pb.add_code_to_index_str(line_number, f"(JP, {current_line_number},\t,\t)")
 
     def assign(self):  # assign
         # add an assign instruction
@@ -356,7 +503,7 @@ class CodeGenerator:
         source_var, dest_var = self.ss.pop_mult(2)
         # self.pop_semantic_stack(1)
 
-        self.pb.add_code(f"(ASSIGN, {source_var}, {dest_var},\t)")
+        self.pb.add_code_str(f"(ASSIGN, {source_var}, {dest_var},\t)")
 
     def array_access(self):  # array_access
         # calculate selected array element address and save result temp in semantic stack
@@ -367,8 +514,8 @@ class CodeGenerator:
 
         temp1 = self.pb.get_temp()
         temp2 = self.pb.get_temp()
-        self.pb.add_code(f"(MULT, #4, {array_index}, {temp1})")
-        self.pb.add_code(f"(ADD, {temp1}, #{array_base_address}, {temp2})")
+        self.pb.add_code_str(f"(MULT, #4, {array_index}, {temp1})")
+        self.pb.add_code_str(f"(ADD, {temp1}, #{array_base_address}, {temp2})")
         self.ss.push(f"@{temp2}")
 
     def push_op(self):  # p_op
@@ -401,7 +548,7 @@ class CodeGenerator:
         else:
             raise ValueError("Operation is invalid!")
         dest = self.pb.get_temp()
-        self.pb.add_code(f"({assembly_operation}, {operand_1}, {operand_2}, {dest})")
+        self.pb.add_code_str(f"({assembly_operation}, {operand_1}, {operand_2}, {dest})")
         self.ss.push(dest)
 
     def p_num(self):  # p_num
@@ -413,17 +560,6 @@ class CodeGenerator:
         # push #number into the semantic stack
         number = int(self._current_token[1])
         self.ss.push(f"#{number}")
-
-    # push type / get_id_type / p_input
-    def p_type(self):  # p_type
-        # push type into the semantic stack
-        data_type = self._current_token[1]
-        self.ss.push(data_type)
-
-    def break_jp(self):  # break_jp
-        # add an indirect jump to the top of the break stack
-        break_temp = self.break_stack[-1]
-        self.pb.add_code(f"(JP, @{break_temp},\t,\t)")
 
     def save_break_tmp(self):  # save_break_temp
         # save a temp in break stack
@@ -475,17 +611,13 @@ class CodeGenerator:
         self.pb.add_code("MUL", op1, op2, tmp)
         self.ss.push(tmp)
 
-
-
-
-
     # def add(self):
     #     op2 = self.ss.pop()
     #     op1 = self.ss.pop()
     #     tmp = self.pb.get_tmp_address()
     #     self.pb.add_code("ADD", op1, op2, tmp)
     #     self.ss.push(tmp)
-        # ...
+    # ...
 
     # def sub(self):
     #     # op2 = self.ss.pop()
@@ -714,5 +846,3 @@ class CodeGenerator:
     #     self.program_block_insert(operation="JPF", first_op=temp_until_condition,
     #                               second_op=self.semantic_stack[-1])
     #     self.pop_last_n(1)
-
-
