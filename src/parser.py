@@ -1,4 +1,5 @@
 from anytree import Node, RenderTree
+from astroid import Tuple
 
 import grammar
 import ctoken
@@ -14,6 +15,16 @@ class Parser:
         self.transition_table = {}
         self.root = None
         self.create_transition_table()
+
+    # def _install_id(self):
+    #     """Adds current id to symbol table if it is not."""
+    #     token: str = self.current_token
+    #     if token not in self.scanner.symbol_table["lexeme"]:
+    #         self.scanner.symbol_table.add_symbol_st(token, None, None, None, None)
+    #     return token
+
+    def get_current_token(self):
+        return self.current_token
 
     def create_transition_table(self):
         for non_terminal in grammar.non_terminals:
@@ -64,6 +75,15 @@ class Parser:
         elif next_token.type == ctoken.NUM:
             parse_value = 'NUM'
         return next_token, parse_value
+
+    def _update_current_token(self):
+        """Stores next token in _current_token and updates _current_input."""
+        self.current_token: Tuple[str, str] = self.scanner.get_next_token()
+        self.current_input: str = ""
+        if self._current_token[0] in {Scanner.KEYWORD, Scanner.SYMBOL, Scanner.EOF}:
+            self._current_input = self._current_token[1]
+        else:
+            self._current_input = self._current_token[0]
 
     def parse(self):
         # for key, value in self.transition_table.items():

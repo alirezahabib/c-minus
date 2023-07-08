@@ -132,6 +132,7 @@ from enum import Enum
 
 from src.parser import Parser
 from src.scanner import Scanner
+from scanner import KEYWORD,SYMBOL
 
 
 class OPERATIONS(Enum):
@@ -215,7 +216,7 @@ class PB:
         self.last_addr = Address(100 - 4)
 
     def get_len(self):
-        return (self.block)
+        return len(self.block)
 
     def get_line(self):
         return self.line
@@ -280,17 +281,43 @@ class PB:
         # self.block.append([code])
         # self.line += 1
 
+# to be refactored
+class SemanticAnalyzer:
+    def __init__(self):
+        self.num_semantic_errors = 0
+        self.all_errors = []
+
+    def raise_semantic_error(self, line_no, error="error", first_op="", second_op="", third_op="", fourth_op=""):
+        self.all_errors.append(error.format(line_no, first_op, second_op, third_op, fourth_op))
+        self.num_semantic_errors += 1
+
+    def pop_error(self):
+        # if we declare a function of type void we must pop the error
+        self.all_errors.pop()
+        self.num_semantic_errors -= 1
+
 
 # main class
 class CodeGenerator:
     def __init__(self, scanner: Scanner, parser: Parser):
         self.ss = SS()
         self.pb = PB()
-        self.st = st.SymbolTable()
+        # self.st = st.SymbolTable()
         self.loop = []
         self.scanner = scanner
         self.parser = parser
         self.break_stack = []
+        self.get_curr_input()
+
+        # self.semantic_analyzer = SemanticAnalyzer()
+        # # errors
+        # self.error_scoping = "#{0}: Semantic Error! '{1}' is not defined.{2}{3}{4}"
+        # self.error_void_type = "#{0}: Semantic Error! Illegal type of void for '{1}'.{2}{3}{4}"
+        # self.error_type_missmatch = "#{0}: Semantic Error! Type mismatch in operands, Got {1} instead of {2}.{3}{4}"
+        # self.error_break = "#{0}: Semantic Error! No 'repeat ... until' found for 'break'."
+        # self.error_param_type_missmatch = "#{0}: Semantic Error! Mismatch in type of argument {1} of '{2}'. Expected '{3}' but got '{4}' instead."
+        # self.error_num_args = "#{0}: Semantic Error! Mismatch in numbers of arguments of '{1}'.{2}{3}{4}"
+
         # ...
 
     '''
@@ -304,6 +331,46 @@ class CodeGenerator:
             else:
                 self._current_input = self._current_token[0]
     '''
+    def get_curr_input(self):
+        self._current_token = self.parser.get_current_token()
+        # self._current_token = self.parsre.get_current_token()[0]
+        toCheck = KEYWORD + SYMBOL + "$"
+        if self._current_token[0] in toCheck:
+            self._current_input = self._current_token[1]
+        else:
+            self._current_input = self._current_token[0]
+
+    def call_main(self):
+        main_function_row = self.scanner.symbol_table.lookup("main")
+        # set up the return address register of main
+        self.pb.add_code(
+            ":=",
+            "#" + str(self.pb.get_line() + 2),
+            str(main_function_row["return_address"])
+        )
+        # now jump to the invocation address of main
+        self.pb.add_code(
+            "JP",
+            str(main_function_row["invocation_address"])
+        )
+
+
+    # def run_routine(self, routine_name, params):
+    #     func_to_call = getattr(self, routine_name)
+    #     if func_to_call is not None and callable(func_to_call):
+    #         func_to_call(*params)
+    #     else:
+    #         raise Exception("Routine not found")
+
+    # def code_gen(self, action_symbol, token, line_number):
+    #     self.current_line = line_number
+    #     if self.no_more_arg_input and action_symbol != "#end_call":
+    #         return
+    #
+    #     action_symbol = action_symbol[1:]
+    #     method = getattr(self, action_symbol, None)
+    #     if method:
+    #         method(token)
 
     # push type / get_id_type / p_input
     def p_type(self):
@@ -320,14 +387,16 @@ class CodeGenerator:
     def p_id_index(self):  # p_id_index
         # push index of identifier into the semantic stack
         lexeme = self._current_token[1]
-        index = self._scanner.get_symbol_index(lexeme)
+        index = self.scanner.get_symbol_index(lexeme)
         self.ss.push(index)
 
     def p_id(self):  # p_id
         # push address of identifier into the semantic stack
         lexeme = self._current_token[1]
-        index = self._scanner.get_symbol_index(lexeme)
-        address = self._scanner.symbol_table["address"][index]
+        index = self.scanner.get_symbol_index(lexeme)
+        # st = self.scanner.symbol_table.get_st()
+        # -1 how
+        address = self.scanner.symbol_table.symbol_table["address"][index]
         self.ss.push(address)
 
     def dec_var(self):  # declare_var
@@ -360,12 +429,12 @@ class CodeGenerator:
                 self.symbol_table["address"][index] = address
 
         '''
-        self._scanner.update_symbol(index,
+        self.scanner.symbol_table.update_symbol(index,
                                     symbol_type="var",
                                     size=0,
                                     data_type=data_type,
-                                    scope=len(self._scanner.scope_stack),
-                                    address=self._current_data_address)
+                                    scope=len(self.scanner.symbol_table.scope_stack),
+                                    address=self.pb.get_current_tmp_addr())
         self.pb.update_tmp_addr(4)
 
     def dec_array(self):  # declare_array
@@ -399,12 +468,12 @@ class CodeGenerator:
                 self.symbol_table["address"][index] = address
 
         '''
-        self._scanner.update_symbol(index,
+        self.scanner.symbol_table.update_symbol(index,
                                     symbol_type="array",
                                     size=size,
                                     data_type=data_type,
-                                    scope=len(self._scanner.scope_stack),
-                                    address=self._current_data_address)
+                                    scope=len(self.scanner.symbol_table.scope_stack),
+                                    address=self.pb.get_current_tmp_addr())
         self.pb.update_tmp_addr(4 * size)
 
     def dec_func(self):  # declare_func
@@ -437,17 +506,18 @@ class CodeGenerator:
                 self.symbol_table["address"][index] = address
 
         '''
-        self._scanner.update_symbol(index,
+        self.scanner.symbol_table.update_symbol(index,
                                     symbol_type="function",
                                     size=0,
                                     data_type=data_type,
-                                    scope=len(self._scanner.scope_stack),
-                                    address=len(self._program_block))
+                                    scope=len(self.scanner.symbol_table.scope_stack),
+                                    address=self.pb.get_len())
         '''
         depends on how scope_stack is implemented in Scanner class
         '''
-        self._scanner.scope_stack.append(index + 1)
-        if self._scanner.symbol_table["lexeme"][index] == "main":
+        # -1 to be implemented
+        self.scanner.symbol_table.scope_stack.append(index + 1)
+        if self.scanner.symbol_table.symbol_table["lexeme"][index] == "main":
             # line_number = self._semantic_stack[-1]
             # self.pop_semantic_stack(1)
             line_number = self.ss.pop()
@@ -459,8 +529,9 @@ class CodeGenerator:
         '''
         depends on how scope_stack is implemented in Scanner class
         '''
-        scope_start = self._scanner.scope_stack.pop()
-        self._scanner.pop_scope(scope_start)
+        # to be implemented
+        scope_start = self.scanner.symbol_table.scope_stack.pop()
+        self.scanner.pop_scope(scope_start)
 
     # def p_type
 
@@ -567,7 +638,7 @@ class CodeGenerator:
         self.break_stack.append(dest)
 
     def label(self):
-        self.ss.append(self.pb.get_line())
+        self.ss.push(self.pb.get_line())
 
     def start_loop(self):
 
@@ -577,31 +648,31 @@ class CodeGenerator:
 
     # declare id
     # it may not be needed actually
-    def did(self, token):
-        # search in symbol table
-        # if found in current scope raise error
-        # if not found
-        # add to symbol table
-        # token will be the lexeme of the variable
-        the_row = self.symbol_table.lookup(token, self.start_scope, False)
-        if the_row is not None and the_row[type_key] == "param":
-            # this means that the variable is already declared and is the function parameter,
-            # and we want to redefine it
-            del the_row[type_key]
-
-        self.symbol_table.insert(token)
-        if self.semantic_stack[-1] == "void":
-            self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
-                                                        error=self.error_void_type,
-                                                        first_op=token)
-
-        self.symbol_table.modify_last_row(kind=kind, type=self.semantic_stack[-1])
-        self.program_block_insert(
-            operation=":=",
-            first_op="#0",
-            second_op=self.symbol_table.get_last_row()[address_key],
-        )
-        self.semantic_stack.pop()
+    # def did(self, token):
+    #     # search in symbol table
+    #     # if found in current scope raise error
+    #     # if not found
+    #     # add to symbol table
+    #     # token will be the lexeme of the variable
+    #     the_row = self.scanner.symbol_table.lookup(token, self.start_scope, False)
+    #     if the_row is not None and the_row[type_key] == "param":
+    #         # this means that the variable is already declared and is the function parameter,
+    #         # and we want to redefine it
+    #         del the_row[type_key]
+    #
+    #     self.scanner.symbol_table.insert(token)
+    #     if self.ss.top() == "void":
+    #         self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
+    #                                                     error=self.error_void_type,
+    #                                                     first_op=token)
+    #
+    #     self.symbol_table.modify_last_row(kind=kind, type=self.semantic_stack[-1])
+    #     self.pb.add_code(
+    #         ":=",
+    #         "#0",
+    #         self.scanner.symbol_table.get_last_row()[address_key],
+    #     )
+    #     self.ss.pop()
 
     def mult(self):
         # op2 = self.ss.pop()
