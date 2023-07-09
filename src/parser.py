@@ -3,6 +3,7 @@ from anytree import Node, RenderTree
 import grammar
 import ctoken
 from scanner import Scanner
+import intercode_gen
 
 
 class Parser:
@@ -85,44 +86,25 @@ class Parser:
                 if stack_top == self.current_value:
                     stack.pop()
                     node_stack.pop().name = str(self.current_token)
-                    self.current_token, self.current_value = self.get_next_token()
                 else:
                     self.error(f"missing {stack_top}")
                     stack.pop()
-                    node = node_stack.pop()
-                    parent_node = node.parent
-                    parent_node.children = [child for child in parent_node.children if child != node]
-                    while stack[-1] in grammar.terminals:
-                        stack.pop()
-                        node_stack.pop()
-                    while self.current_value not in grammar.follow[stack[-1]] and self.current_value != '$':
-                        if stack[-1] == 'Statement-list' and self.current_value == ';':
-                            break
-                        self.error(f"illegal {self.current_value}")
-                        self.current_token, self.current_value = self.get_next_token()
-                    if self.current_value == '$':
-                        self.scanner.reader.line_number += 1
-                        self.error("Unexpected EOF")
-                        while stack:
-                            stack.pop()
-                            node = node_stack.pop()
-                            parent_node = node.parent
-                            parent_node.children = [child for child in parent_node.children if child != node]
+                    node_stack.pop().name = str(self.current_token)
+                self.current_token, self.current_value = self.get_next_token()
             elif stack_top == '$':
+                if stack_top != self.current_value:
+                    self.error("Unexpected EOF")
                 break
+            elif stack_top[0] == '#':
+                getattr(intercode_gen, stack_top[1:])()
+                stack.pop()
+                node_stack.pop()
+
             else:
                 production_rule = self.transition_table[(stack_top, self.current_value)]
-                print(f'production_rule {(stack_top, self.current_value)}:', production_rule)
+                # print(f'production_rule {(stack_top, self.current_value)}:', production_rule)
 
                 if production_rule is None:
-                    if self.current_value == '$':
-                        self.error("Unexpected EOF")
-                        while stack:
-                            stack.pop()
-                            node = node_stack.pop()
-                            parent_node = node.parent
-                            parent_node.children = [child for child in parent_node.children if child != node]
-                        continue
                     if 'epsilon' in grammar.first[stack_top]:
                         production_rule = grammar.rules[stack_top][-1]
                     else:
@@ -134,9 +116,9 @@ class Parser:
                     Node('epsilon', parent=node_stack.pop())
                     stack.pop()
                 else:
-                    print('stack before:', stack)
-                    print('rule:', production_rule)
-                    print('current_value:', self.current_value)
+                    # print('stack before:', stack)
+                    # print('rule:', production_rule)
+                    # print('current_value:', self.current_value)
                     stack.pop()
                     node_stack.pop()
                     nodes = []
@@ -145,13 +127,13 @@ class Parser:
                     for symbol in reversed(production_rule):
                         stack.append(symbol)
                         node_stack.append(nodes.pop())
-                    print('stack after:', stack)
+                    # print('stack after:', stack)
 
-                    # self.print_parse_tree()
+                    self.print_parse_tree()
         self.print_parse_tree()
 
     def error(self, message):
-        print(f'#{self.scanner.reader.line_number} : syntax error, {message}')
+        # print(f'#{self.scanner.reader.line_number} : syntax error, {message}')
         self.syntax_errors.append((self.scanner.reader.line_number, message))
 
     def print_parse_tree(self, file=None):
