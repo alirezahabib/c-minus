@@ -132,7 +132,7 @@ from enum import Enum
 
 from src.parser import Parser
 from src.scanner import Scanner
-from scanner import KEYWORD,SYMBOL
+from scanner import KEYWORD, SYMBOL
 
 
 class OPERATIONS(Enum):
@@ -208,6 +208,141 @@ class Address:
         return str(self.address)
 
 
+# highly needs to be refactored
+class Symbol_Table:
+
+    def __init__(self) -> None:
+        # row properties are id, lexeme, proc/func/var/param (kind), No. Arg/Cell (attributes), type, scope, address
+        self.address_to_row = {}
+        self.table = []
+        self.current_scope = 0
+        self.scope_stack = [0]
+        self.insert("output")
+        self.modify_last_row("func", "void")
+        self.table[-1]['attributes'] = 1
+        self.pb = PB()
+        self.table.append({'id': 1, 'lexeme': 'somethingwild', 'kind': "param", 'attributes': '-', 'type': "int",
+                           'scope': 1, 'address': self.pb.get_tmp_address()})  # ("int", 1)
+
+    def insert(self, lexeme):
+        self.table.append({'id': len(self.table), 'lexeme': lexeme})
+
+    def modify_last_row(self, kind, type):
+        # after declaration of a variable by scanner, code generator needs
+        # to complete the declaration by modifying the last row of symbol table
+        self.table[-1]['kind'] = kind
+        self.table[-1]['type'] = type
+        self.table[-1]['address'] = self.pb.get_tmp_address()  # (type, 1)
+        self.table[-1]['scope'] = self.current_scope
+        self.table[-1]['attributes'] = '-'
+        self.address_to_row[self.table[-1]['address']] = len(self.table) - 1
+
+    def modify_func_row_information(self, row_index, invocation_address, return_address, return_value):
+        # add a "invocation_address" field to the row,
+        # this is used when we declare a function and we want to invoke it. We should know where to jump to
+        self.table[row_index]['invocation_address'] = invocation_address
+        # add a "return_address" field to the row,
+        # anyone who calls the function should put its address (PC) in this address
+        self.table[row_index]['return_address'] = return_address
+        # return value is the address of a temp that is supposed to hold the return value of the function
+        self.table[row_index]['return_value'] = return_value
+
+    def modify_attributes_last_row(self, num_attributes):
+        # used for array declaration and function declaration
+        # if arr_func == True then it is an array
+        # else it is a function
+        # note: for now it is only used for array declaration
+        self.table[-1]['attributes'] = num_attributes
+
+    def modify_attributes_row(self, row_id, num_attributes, arr_func: bool = True):
+        # used for modifying function No. of args after counting them
+        # if arr_func == True then it is an array
+        # else it is a function
+        self.table[row_id]['attributes'] = num_attributes
+
+    def modify_kind_last_row(self, kind):
+        self.table[-1]['kind'] = kind
+
+    def add_scope(self):
+        self.current_scope += 1
+        self.scope_stack.append(len(self.table))
+
+    def end_scope(self):
+        # remove all rows of symbol table that are in the current scope
+        # and update the current scope
+        # remember function is first added and then the scope is added
+        # also param type of the function that the scope is created for,
+        # must not be removed
+        remove_from = len(self.table)
+        for i in range(self.scope_stack[-1], len(self.table)):
+            if self.is_useless_row(i) or self.table[i]['kind'] != "param":
+                remove_from = i
+                break
+
+        self.table = self.table[:remove_from]
+
+        self.current_scope -= 1
+        self.scope_stack.pop()
+
+    def declare_array(self, num_of_cells):
+        self.table[-1]['attributes'] = num_of_cells
+
+    def lookup(self, name, start_ind=0, in_declare=False, end_ind=-1) -> dict:
+        # search in symbol table
+        # search for it between the start_ind and end_ind of symbol table
+        # if end_ind == -1 then it means to search till the end of symbol table
+
+        row_answer = None
+        nearest_scope = -1
+        end = end_ind
+
+        if end_ind == -1:
+            end = len(self.table)
+            if in_declare and self.is_useless_row(-1):
+                end -= 1
+
+        while len(self.scope_stack) >= -nearest_scope:
+            start = self.scope_stack[nearest_scope]
+
+            for i in range(start, end):
+                row_i = self.table[i]
+                if not self.is_useless_row(i):
+                    if nearest_scope != -1 and row_i['kind'] == "param":
+                        pass
+                    elif row_i['lexeme'] == name:
+                        return row_i
+
+            nearest_scope -= 1
+            end = start
+
+        return row_answer
+
+    def remove_last_row(self):
+        self.table.pop()
+
+    def is_useless_row(self, id):
+        if "type" not in self.get_row_by_id(id):
+            return True
+
+    def get_row_id_by_address(self, address) -> int:
+        return self.address_to_row[address]
+
+    def get_row_by_id(self, id) -> dict:
+        return self.table[id]
+
+    def get_id_last_row(self):
+        return len(self.table) - 1
+
+    def get_row_by_address(self, address) -> dict:
+        return self.get_row_by_id(self.get_row_id_by_address(address))
+
+    def get_last_row(self):
+        return self.get_row_by_id(-1)
+
+    def get_last_row_index(self):
+        return len(self.table) - 1
+
+
 class PB:
     def __init__(self):
         self.block = []
@@ -221,6 +356,9 @@ class PB:
     def get_line(self):
         return self.line
 
+    def get_current_tmp_addr(self):
+        return self.last_tmp
+
     def add_code(self, operation, op1, op2=None, op3=None):
         self.block.append([operation, op1, op2, op3])
         self.line += 1
@@ -233,8 +371,8 @@ class PB:
         self.last_tmp += 4
         return Address(self.last_tmp.address)
 
-    def get_current_tmp_addr(self):
-        return self.last_tmp
+    # def get_current_tmp_addr(self):
+    #     return self.last_tmp
 
     def update_tmp_addr(self, size):
         self.last_tmp += size
@@ -242,6 +380,24 @@ class PB:
     def get_address(self):
         self.last_addr += 4
         return Address(self.last_addr.address)
+
+    # modify this shiiiiiiiiiiiiiiiiiiiiit
+    def modify(self, index, op, first_op="", second_op="", third_op=""):
+        if op == "==":
+            opr = "EQ"
+        elif op == '-':
+            opr = "SUB"
+        elif op == ":=":
+            opr = "ASSIGN"
+        elif op == "<":
+            opr = "LT"
+        elif op == '+':
+            opr = "ADD"
+        elif op == '*':
+            opr = "MULT"
+
+        #now we want to add the new code to the block (we removed index at the start)
+        self.block[index] =[opr, first_op, second_op, third_op]
 
     def get_temp(self):
         temp = self.last_tmp
@@ -281,6 +437,11 @@ class PB:
         # self.block.append([code])
         # self.line += 1
 
+    def get_tmp_address_by_size(self, entries_type, array_size):
+        self.last_tmp += entries_type * array_size
+        return Address(self.last_tmp.address)
+
+
 # to be refactored
 class SemanticAnalyzer:
     def __init__(self):
@@ -308,7 +469,9 @@ class CodeGenerator:
         self.parser = parser
         self.break_stack = []
         self.get_curr_input()
-
+        self.symbol_table = self.scanner.symbol_table
+        self.code_gen_st = Symbol_Table()
+        self.curr_repeats = 0
         # self.semantic_analyzer = SemanticAnalyzer()
         # # errors
         # self.error_scoping = "#{0}: Semantic Error! '{1}' is not defined.{2}{3}{4}"
@@ -331,6 +494,7 @@ class CodeGenerator:
             else:
                 self._current_input = self._current_token[0]
     '''
+
     def get_curr_input(self):
         self._current_token = self.parser.get_current_token()
         # self._current_token = self.parsre.get_current_token()[0]
@@ -341,7 +505,7 @@ class CodeGenerator:
             self._current_input = self._current_token[0]
 
     def call_main(self):
-        main_function_row = self.scanner.symbol_table.lookup("main")
+        main_function_row = self.scanner.symbol_table.code_gen_st.lookup("main")
         # set up the return address register of main
         self.pb.add_code(
             ":=",
@@ -354,6 +518,220 @@ class CodeGenerator:
             str(main_function_row["invocation_address"])
         )
 
+    def declare_id(self):
+        # search in symbol table
+        # if found in current scope raise error
+        # if not found
+        # add to symbol table
+        # token will be the lexeme of the variable
+        # the_row = self.scanner.symbol_table.lookup(token, self.scanner.symbol_table.start_scope, False)
+        # if the_row is not None and the_row["scope"] == self.symbol_table.current_scope:
+        #     # this means that the variable is already declared,
+        #     # and we want to redefine it
+        #     del the_row["type"]
+        #
+        # self.symbol_table.insert(token)
+        # if self.ss.top() == "void":
+        # to be implented
+        # self.semantic_analyzer.raise_semantic_error(line_no=self.pb.get_line(),
+        #                                             error=self.error_void_type,
+        #                                             first_op=token)
+
+        self.code_gen_st.modify_last_row(kind="var", type=self.ss.top())
+        self.pb.add_code(
+            ":=",
+            "#0",
+            self.code_gen_st.get_last_row()["address"],
+        )
+        self.ss.pop()
+
+    # refactore this shiiiiiiiiiiiiiit
+    def declare_entry_array(self):
+        self.p_zero()
+        self.dec_array()
+
+    # refactore this shiiiiiiiiiiiiiiiiiiit
+    def dec_array(self):
+        # add to symbol table
+        # self.symbol_table
+        array_size = self.ss.pop()
+        if str(array_size).startswith("#"):
+            array_size = int(array_size[1:])
+        self.code_gen_st.modify_attributes_last_row(num_attributes=array_size)
+        array_row = self.code_gen_st.get_last_row()
+        # array address is the address of pointer to array
+        # we need to allocate memory for the array itself and then assign the address of the first entry to the pointer
+        array_address = array_row["address"]
+        entries_type = array_row["type"]
+        array_start_address = self.pb.get_tmp_address_by_size(entries_type, array_size)
+        self.pb.add_code(
+            ":=",
+            "#" + str(array_start_address),
+            array_address
+        )
+
+    def label(self):
+        # declare where to jump back after until in repeat-until
+        self.ss.push(self.pb.get_line())
+
+        self.curr_repeats += 1
+
+    def until(self):
+        # jump back to label if condition is true
+        # also check if there were any break statements before
+        self.curr_repeats -= 1
+        temp_until_condition = self.ss.pop()  # the value that until should decide to jump based on it
+        # check breaks
+        # sdfasdfa
+        while len(self.ss.stack) > 0 and self.ss.top() == "break":  # [-1] == "break":
+            self.pb.modify(self.ss.stack[-2], "JP", self.pb.get_line() + 1)
+            self.ss.pop_mult(2)
+        # jump back
+        self.pb.add_code("JPF", temp_until_condition,
+                         self.ss.top())
+        self.ss.pop()
+
+    def push_eq(self):
+        # in case of assignment, push = to stack
+        # used for finding out if there is a nested assignment
+        self.ss.push("=")
+
+    def start_call(self):
+        # start of function call
+        # row_id = self.symbol_table.lookup(self.semantic_stack[-1])['id']
+        function_row_id = self.code_gen_st.get_row_id_by_address(self.ss.top())
+        self.ss.pop()
+        num_parameters = self.code_gen_st.get_row_by_id(function_row_id)["attributes"]
+        # add parameter types to stack in the form of tuple (type, is_array)
+        for i in range(num_parameters, 0, -1):
+            temp_address_param = self.code_gen_st.get_row_by_id(function_row_id + i)["address"]
+            # type_param = self.get_operand_type(temp_address_param)
+            self.ss.push(temp_address_param)
+
+        # add the number of parameters to stack
+        self.ss.push(num_parameters)
+        # add a counter for arguments - at first it is equal to number of parameters
+        self.ss.push(num_parameters)
+        # add name of function to stack
+        self.ss.push(self.code_gen_st.get_row_by_id(function_row_id)["lexeme"])
+
+    def end_call(self):
+        # end of function call
+        self.no_more_arg_input = False
+        name_func = self.ss.pop()
+        counter_args = self.ss.pop()
+        # num_parameters = self.ss.pop()
+        # if counter_args != 0:
+        #     self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
+        #                                                 error=self.error_num_args,
+        #                                                 first_op=name_func
+        #                                                 )
+        #     self.pop_last_n(counter_args)
+
+        function_row = self.code_gen_st.lookup(name_func)
+        index = function_row['id']
+        # if index in self.FS:
+        #     self.semantic_analyzer.raise_semantic_error(1)  # todo added to avoid recursive call
+
+        # return if function_row does not have needed keys (may not happen!)
+        if "invocation_address" not in function_row or "return_address" not in function_row:
+            # print("error in function declaration")
+            return
+        # update the return address temp of function (we want the function to return here after invocation)
+        return_address_temp = function_row["return_address"]
+        self.pb.add_code(
+            ":=",
+            "#" + str(self.pb.get_line() + 2),
+            return_address_temp
+        )
+        # # if the function is supposed to return a value, we need to push the address of return value to stack
+        # if function_row[type_key] != "void":
+        #     self.semantic_stack.append(function_row[return_value_key]
+        # now that everything is set (including return address and arguments assignment), we can jump to the function
+        self.pb.add_code(
+            "JP",
+            function_row["invocation_address"]
+        )
+        if function_row["type"] != "void":
+            returnee_copy = self.pb.get_tmp_address(1,function_row["type"])
+            self.pb.add_code(
+                ":=",
+                function_row["return_value"],
+                returnee_copy
+            )
+            self.ss.push(returnee_copy)
+
+    def print(self):
+        self.pb.add_code("print", self.ss.top())
+        self.ss.pop()
+
+    def get_operand_type(self, operand):
+        is_array = False
+        if str(operand).startswith("#"):
+            return "int", is_array
+        elif str(operand).startswith("@"):
+            operand = operand[1:]
+        type = self.heap_manager.get_type_by_address(int(operand))
+        if type.endswith("-arr"):
+            type = type[:-4]
+            is_array = True
+
+        return type, is_array
+
+    def arg_input(self):
+        # take input argument for function call
+        if not self.no_more_arg_input:
+            arg = self.ss.pop()
+            type_arg = self.get_operand_type(arg)
+            name_func = self.ss.pop()
+            counter_args = self.ss.pop()
+            counter_args -= 1
+            # if counter_args == 0 and token != ")":
+            #     self.no_more_arg_input = True
+            #     self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
+            #                                                 error=self.error_num_args,
+            #                                                 first_op=name_func
+            #                                                 )
+
+            num_parameters = self.ss.pop()
+            temp_param = self.ss.pop()
+            self.pb.add_code(
+                ":=",
+                arg,
+                temp_param
+            )
+
+            type_param = self.get_operand_type(temp_param)
+            if type_arg != type_param:
+                pass
+                # self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
+                #                                             error=self.error_param_type_missmatch,
+                #                                             first_op=num_parameters - counter_args,
+                #                                             second_op=name_func,
+                #                                             third_op=self.get_type_name(type_param),
+                #                                             fourth_op=self.get_type_name(type_arg)
+                #                                             )
+            else:
+                if name_func == "output":
+                    self.ss.push(arg)
+                    self.print("nothing")
+
+            self.ss.push(num_parameters)
+            self.ss.push(counter_args)
+            self.ss.push(name_func)
+
+    # def dec_array(self):
+    #     size, index, data_type = self.ss.pop_mult(3)
+    #     self.ss.pop_out_mult(3)
+    #
+    #     self.pb.add_code("ASSIGN", 0, self.pb.get_current_tmp_addr())
+    #     self.scanner.symbol_table.update_symbol(index,
+    #                                 symbol_type="array",
+    #                                 size=size,
+    #                                 data_type=data_type,
+    #                                 scope=len(self.scanner.symbol_table.scope_stack),
+    #                                 address=self.pb.get_current_tmp_addr())
+    #     self.pb.update_tmp_addr(4 * size)
 
     # def run_routine(self, routine_name, params):
     #     func_to_call = getattr(self, routine_name)
@@ -430,51 +808,51 @@ class CodeGenerator:
 
         '''
         self.scanner.symbol_table.update_symbol(index,
-                                    symbol_type="var",
-                                    size=0,
-                                    data_type=data_type,
-                                    scope=len(self.scanner.symbol_table.scope_stack),
-                                    address=self.pb.get_current_tmp_addr())
+                                                symbol_type="var",
+                                                size=0,
+                                                data_type=data_type,
+                                                scope=len(self.scanner.symbol_table.scope_stack),
+                                                address=self.pb.get_current_tmp_addr())
         self.pb.update_tmp_addr(4)
 
-    def dec_array(self):  # declare_array
-        # assign an address to the identifier, assign 0 to the start of the array in the program block
-        # and update identifier's row in the symbol table
-        # data_type = self._semantic_stack[-3]
-        # index = self._semantic_stack[-2]
-        # size = self._semantic_stack[-1]
-        size, index, data_type = self.ss.pop_mult(3)
-        self.ss.pop_out_mult(3)
-
-        self.pb.add_code("ASSIGN", 0, self.pb.get_current_tmp_addr())
-        '''
-        this is what the update_symbol is supposed to do in Scanner class:
-        def update_symbol(self,
-                          index: int,
-                          symbol_type: str = None,
-                          size: int = None,
-                          data_type: str = None,
-                          scope: int = None,
-                          address: int = None):
-            if symbol_type is not None:
-                self.symbol_table["type"][index] = symbol_type
-            if size is not None:
-                self.symbol_table["size"][index] = size
-            if data_type is not None:
-                self.symbol_table["data_type"][index] = data_type
-            if scope is not None:
-                self.symbol_table["scope"][index] = scope
-            if address is not None:
-                self.symbol_table["address"][index] = address
-
-        '''
-        self.scanner.symbol_table.update_symbol(index,
-                                    symbol_type="array",
-                                    size=size,
-                                    data_type=data_type,
-                                    scope=len(self.scanner.symbol_table.scope_stack),
-                                    address=self.pb.get_current_tmp_addr())
-        self.pb.update_tmp_addr(4 * size)
+    # def dec_array(self):  # declare_array
+    # # assign an address to the identifier, assign 0 to the start of the array in the program block
+    # # and update identifier's row in the symbol table
+    # # data_type = self._semantic_stack[-3]
+    # # index = self._semantic_stack[-2]
+    # # size = self._semantic_stack[-1]
+    # size, index, data_type = self.ss.pop_mult(3)
+    # self.ss.pop_out_mult(3)
+    #
+    # self.pb.add_code("ASSIGN", 0, self.pb.get_current_tmp_addr())
+    # '''
+    # this is what the update_symbol is supposed to do in Scanner class:
+    # def update_symbol(self,
+    #                   index: int,
+    #                   symbol_type: str = None,
+    #                   size: int = None,
+    #                   data_type: str = None,
+    #                   scope: int = None,
+    #                   address: int = None):
+    #     if symbol_type is not None:
+    #         self.symbol_table["type"][index] = symbol_type
+    #     if size is not None:
+    #         self.symbol_table["size"][index] = size
+    #     if data_type is not None:
+    #         self.symbol_table["data_type"][index] = data_type
+    #     if scope is not None:
+    #         self.symbol_table["scope"][index] = scope
+    #     if address is not None:
+    #         self.symbol_table["address"][index] = address
+    #
+    # '''
+    # self.scanner.symbol_table.update_symbol(index,
+    #                             symbol_type="array",
+    #                             size=size,
+    #                             data_type=data_type,
+    #                             scope=len(self.scanner.symbol_table.scope_stack),
+    #                             address=self.pb.get_current_tmp_addr())
+    # self.pb.update_tmp_addr(4 * size)
 
     def dec_func(self):  # declare_func
         # update identifier's row in the symbol table, initialize next scope
@@ -507,11 +885,11 @@ class CodeGenerator:
 
         '''
         self.scanner.symbol_table.update_symbol(index,
-                                    symbol_type="function",
-                                    size=0,
-                                    data_type=data_type,
-                                    scope=len(self.scanner.symbol_table.scope_stack),
-                                    address=self.pb.get_len())
+                                                symbol_type="function",
+                                                size=0,
+                                                data_type=data_type,
+                                                scope=len(self.scanner.symbol_table.scope_stack),
+                                                address=self.pb.get_len())
         '''
         depends on how scope_stack is implemented in Scanner class
         '''
@@ -636,6 +1014,9 @@ class CodeGenerator:
         # save a temp in break stack
         dest = self.pb.get_temp()
         self.break_stack.append(dest)
+
+    def p_zero(self):
+        self.ss.push("0")
 
     def label(self):
         self.ss.push(self.pb.get_line())

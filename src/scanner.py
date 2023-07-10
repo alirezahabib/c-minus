@@ -5,6 +5,7 @@
 # Uncomment logging.* lines to see what's going on
 
 from ctoken import *
+from intercode_gen import Symbol_Table
 
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
 single_symbols = ['+', '-', '<', ':', ';', ',', '(', ')', '[', ']', '{', '}']
@@ -27,10 +28,104 @@ class SymbolTable:
     def __init__(self):
         # Here dictionary acts as an ordered set
         self.symbols = dict.fromkeys(keywords)
+        self.code_gen_st = Symbol_Table() #**
+        self.st = self.get_st()
+        # self.symbol_table = {"lexeme": [], "type": [], "size": [], "data_type": [], "scope": [],
+        #                      "address": []}
+        self.scope_stack = [0]
+        self.symbol_table = {"lexeme": [], "type": [], "size": [], "data_type": [], "scope": [],
+                             "address": []}
+        for keyword in keywords:
+            self.add_symbol_to_new_st(keyword, "keyword", 0, None, 1)
+
+        # self
 
     def add_symbol(self, symbol):
         # Symbols is a dictionary, so no need to check if symbol is already in the table
         self.symbols[symbol] = None
+        self.st = self.get_st()
+        the_row = self.code_gen_st.lookup(symbol, 0, False)
+        if the_row is not None and the_row["scope"] == self.code_gen_st.current_scope:
+            # this means that the variable is already declared,
+            # and we want to redefine it
+            del the_row["type"]
+
+        self.code_gen_st.insert(symbol)
+        # if self.semantic_stack[-1] == "void":
+        #     self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
+        #                                                 error=self.error_void_type,
+        #                                                 first_op=token)
+
+        # self.code_gen_st.modify_last_row(kind=kind, type=self.semantic_stack[-1])
+        # self.program_block_insert(
+        #     operation=":=",
+        #     first_op="#0",
+        #     second_op=self.symbol_table.get_last_row()[address_key],
+        # )
+        # self.add_symbol_st(symbol, "id", 0, None, self.scope_stack[-1])
+
+    def get_top_symbols(self):
+        return self.symbols.keys[-1]
+
+    def add_to_code_gen_st(self, symbol):
+        self.code_gen_st.add_symbol(symbol)
+
+    def get_top_symbol_table(self):
+        return self.symbol_table["lexemes"][-1]
+
+    # def add_symbol_st(self, lexeme, symbol_type, size, data_type, scope):
+    #     """Adds a new row to the symbol table"""
+    #     self.symbol_table["lexeme"].append(lexeme)
+    #     self.symbol_table["type"].append(symbol_type)
+    #     self.symbol_table["size"].append(size)
+    #     self.symbol_table["data_type"].append(data_type)
+    #     self.symbol_table["scope"].append(scope)
+
+    def save_symbols(self):
+        """Writes symbol table in symbol_table.txt."""
+        with open("symbol_table.txt", mode="w") as symbol_table_file:
+            for key, value in self.symbol_table.items():
+                symbol_table_file.write(f"{value}.\t{key}\n")
+
+    def add_symbol_to_new_st(self,
+                             lexeme: str,
+                             symbol_type: str = None,
+                             size: int = 0,
+                             data_type: str = None,
+                             scope: int = None,
+                             address: int = None):
+        """Adds a new row to the symbol table"""
+        self.symbol_table["lexeme"].append(lexeme)
+        self.symbol_table["type"].append(symbol_type)
+        self.symbol_table["size"].append(size)
+        self.symbol_table["data_type"].append(data_type)
+        self.symbol_table["scope"].append(scope)
+        self.symbol_table["address"].append(address)
+
+    # def _install_id(self, current_token: object) -> object:
+    #     """Adds current id to symbol table if it is not."""
+    #     token: str = current_token
+    #     if token not in self.symbol_table["lexeme"]:
+    #         self.add_symbol(token, None, 0, None, None)
+    #     return token
+
+    def update_symbol(self,
+                      index: int,
+                      symbol_type: str = None,
+                      size: int = None,
+                      data_type: str = None,
+                      scope: int = None,
+                      address: int = None):
+        if symbol_type is not None:
+            self.symbol_table["type"][index] = symbol_type
+        if size is not None:
+            self.symbol_table["size"][index] = size
+        if data_type is not None:
+            self.symbol_table["data_type"][index] = data_type
+        if scope is not None:
+            self.symbol_table["scope"][index] = scope
+        if address is not None:
+            self.symbol_table["address"][index] = address
 
     # Used to create symbol_table.txt file, use str(symbol_table) to get the string
     # Or use print(symbol_table) to print the table
@@ -40,6 +135,63 @@ class SymbolTable:
             s += f'{line_number_str(i + 1)}{symbol}\n'
         return s
 
+    def get_st(self):
+        # it must return index of symbols plus the keywords and values in the symbols
+        toReturn = {}
+        for i, symbol in enumerate(self.symbol_table):
+            # toReturn.append(line_number_str(i + 1), symbol)
+            toReturn[i + 1] = symbol
+        return toReturn
+
+    def get_row_by_id(self, id):
+        # return self.table[id]
+        return self.get_st()[id+1]
+
+    def is_useless_row(self, id):
+        if "type" not in self.get_row_by_id(id):
+            return True
+
+    def lookup(self, name, in_declare=False, end_ind=-1) -> dict:
+        # search in symbol table
+        # search for it between the start_ind and end_ind of symbol table
+        # if end_ind == -1 then it means to search till the end of symbol table
+
+        row_answer = None
+        nearest_scope = -1
+        end = end_ind
+
+        if end_ind == -1:
+            end = len(self.symbols.keys)
+            toCheck = ["void", "int"]
+            if in_declare and self.symbol_table["data_type"][-1] not in toCheck:
+            # if in_declare and self.is_useless_row(-1):
+                end -= 1
+
+        while len(self.scope_stack) >= -nearest_scope:
+            start = self.scope_stack[nearest_scope]
+
+            for i in range(start, end):
+                # row_i = self.table[i]
+                # row_i = self.symbols.key[i]
+                # "lexeme": [], "type": [], "size": [], "data_type": [], "scope": [],
+                #                              "address"
+                row_i = [self.symbol_table["lexeme"][i]
+                         , self.symbol_table["type"]
+                         , self.symbol_table["size"]
+                         , self.symbol_table["data_type"]
+                         , self.symbol_table["scope"]] #lexeme,sym_type,size,data_type,scope
+                if self.symbol_table["data_type"][i] not in ["void", "int"]:
+                    if nearest_scope != -1 and row_i[1] == "ID":
+                        pass
+                    elif row_i[0] == name:
+                        toReturn = {"lexeme":row_i[0] , "type":row_i[1] , "size":row_i[2] , "data_type":row_i[3] , "scope":row_i[4]}
+                        # return row_i
+                        return toReturn
+
+            nearest_scope -= 1
+            end = start
+
+        return row_answer
 
 class Reader:
     def __init__(self, file):
@@ -115,6 +267,8 @@ class Scanner:
         if self.current_state.state_type == ID:
             self.symbol_table.add_symbol(token_name)
             if token_name in keywords:
+                self.symbol_table.add_symbol_to_new_st(token_name, self.current_state.state_type
+                                                       , 1, token_name, self.symbol_table.scope_stack[-1])
                 return Token(KEYWORD, token_name)
         elif self.current_state.state_type == PANIC:
             token_name = token_name[:7] + '...' if len(token_name) > 7 else token_name
@@ -152,6 +306,35 @@ class Scanner:
         return '\n'.join(map(lambda line_number:
                              line_number_str(line_number) + ' '.join(map(str, self.lexical_errors[line_number])),
                              self.lexical_errors))
+
+    # we want to implement a function that returns the index of the lexeme in the symbol table
+    # if the lexeme is not in the symbol table, return -1
+    # let's call it get_symbol_index
+    def get_symbol_index(self, lexeme):
+        st = self.symbol_table.get_st()  # {i:{lex:None}, ...}
+        # we must search the keys of st which will be in the form of {lex : None}
+        # then if lex== lexeme, return i
+        for i in st.keys():
+            if st[i][0] == lexeme:
+                return i - 1
+        return -1
+
+    def pop_scope(self, scope_start: int):
+        for column in self.symbol_table.symbol_table.values():
+            column.pop(len(column) - scope_start)
+
+    def get_symbol_index_st(self, lexeme: str) -> int:
+        # symbol_table = self.symbol_table.symbol_table
+        """Return index of the lexeme in the symbol table"""
+        # return self.symbol_table["lexeme"].index(lexeme)
+        current_scope_end = len(self.symbol_table.symbol_table["lexeme"])
+        for current_scope_start in self.symbol_table.scope_stack[::-1]:
+            if lexeme not in self.symbol_table.symbol_table["lexeme"][current_scope_start:current_scope_end]:
+                current_scope_end = current_scope_start
+                continue
+            else:
+                return self.symbol_table.symbol_table["lexeme"].index(lexeme, current_scope_start, current_scope_end)
+        return -1
 
 
 State(0, START, is_final=False, is_star=False)
