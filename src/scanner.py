@@ -5,7 +5,9 @@
 # Uncomment logging.* lines to see what's going on
 
 from ctoken import *
-from intercode_gen import Symbol_Table
+from symbol_table import Symbol_Table
+from symbol_table import Address
+
 
 keywords = ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']
 single_symbols = ['+', '-', '<', ':', ';', ',', '(', ')', '[', ']', '{', '}']
@@ -28,15 +30,19 @@ class SymbolTable:
     def __init__(self):
         # Here dictionary acts as an ordered set
         self.symbols = dict.fromkeys(keywords)
-        self.code_gen_st = Symbol_Table() #**
-        self.st = self.get_st()
-        # self.symbol_table = {"lexeme": [], "type": [], "size": [], "data_type": [], "scope": [],
-        #                      "address": []}
-        self.scope_stack = [0]
+        address = Address.get_instance()
+        # self.code_gen_st = Symbol_Table() #**
+        self.code_gen_st = Symbol_Table.get_instance()
         self.symbol_table = {"lexeme": [], "type": [], "size": [], "data_type": [], "scope": [],
                              "address": []}
         for keyword in keywords:
             self.add_symbol_to_new_st(keyword, "keyword", 0, None, 1)
+        self.st = self.get_st()
+        # self.symbol_table = {"lexeme": [], "type": [], "size": [], "data_type": [], "scope": [],
+        #                      "address": []}
+        self.scope_stack = [0]
+
+
 
         # self
 
