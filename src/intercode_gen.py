@@ -349,6 +349,7 @@ class PB:
         self.line = 0
         self.last_tmp = Address(500 - 4)
         self.last_addr = Address(100 - 4)
+        self.all_addresses = []
 
     def get_len(self):
         return len(self.block)
@@ -369,6 +370,7 @@ class PB:
 
     def get_tmp_address(self):
         self.last_tmp += 4
+        self.all_addresses.append(self.last_tmp)
         return Address(self.last_tmp.address)
 
     # def get_current_tmp_addr(self):
@@ -378,7 +380,8 @@ class PB:
         self.last_tmp += size
 
     def get_address(self):
-        self.last_addr += 4
+        self.last_addr += 1
+        self.all_addresses.append(self.last_addr)
         return Address(self.last_addr.address)
 
     # modify this shiiiiiiiiiiiiiiiiiiiiit
@@ -401,6 +404,7 @@ class PB:
 
     def get_temp(self):
         temp = self.last_tmp
+        self.all_addresses.append(temp)
         self.last_tmp += 4
 
         return temp
@@ -439,7 +443,18 @@ class PB:
 
     def get_tmp_address_by_size(self, entries_type, array_size):
         self.last_tmp += entries_type * array_size
+        self.all_addresses.append(self.last_tmp)
         return Address(self.last_tmp.address)
+
+    def get_next_addr(self,addr):
+        return self.all_addresses[self.all_addresses.index(addr)+1]
+
+    def get_type(self, addr):
+        next_addr = self.get_next_addr(addr)
+        if next_addr - addr == 4:
+            return "int"
+        elif next_addr - addr == 1:
+            return "void"
 
 
 # to be refactored
@@ -671,7 +686,7 @@ class CodeGenerator:
             return "int", is_array
         elif str(operand).startswith("@"):
             operand = operand[1:]
-        type = self.heap_manager.get_type_by_address(int(operand))
+        type = self.pb.get_type(int(operand))
         if type.endswith("-arr"):
             type = type[:-4]
             is_array = True
@@ -1018,14 +1033,14 @@ class CodeGenerator:
     def p_zero(self):
         self.ss.push("0")
 
-    def label(self):
-        self.ss.push(self.pb.get_line())
-
-    def start_loop(self):
-
-    def repeat(self):
-
-    def end_loop(self):
+    # def label(self):
+    #     self.ss.push(self.pb.get_line())
+    #
+    # def start_loop(self):
+    #
+    # def repeat(self):
+    #
+    # def end_loop(self):
 
     # declare id
     # it may not be needed actually
