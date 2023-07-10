@@ -396,8 +396,8 @@ class PB:
         elif op == '*':
             opr = "MULT"
 
-        #now we want to add the new code to the block (we removed index at the start)
-        self.block[index] =[opr, first_op, second_op, third_op]
+        # now we want to add the new code to the block (we removed index at the start)
+        self.block[index] = [opr, first_op, second_op, third_op]
 
     def get_temp(self):
         temp = self.last_tmp
@@ -653,7 +653,7 @@ class CodeGenerator:
             function_row["invocation_address"]
         )
         if function_row["type"] != "void":
-            returnee_copy = self.pb.get_tmp_address(1,function_row["type"])
+            returnee_copy = self.pb.get_tmp_address(1, function_row["type"])
             self.pb.add_code(
                 ":=",
                 function_row["return_value"],
