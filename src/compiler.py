@@ -1,20 +1,21 @@
 """
 C- compiler (Phase 2 - Parser)
 Compiler Design | Sharif University of Technology
-Soheil   Nazari  Mendejin    99102412
+Abolfazl Eshagh    9910105
 Alireza  Habibzadeh          99109393
 """
 
 from parser import Parser
 from scanner import Scanner, Reader, State
-from intercode_gen import CodeGenerator
-
+# from intercode_gen import CodeGenerator
+from parser import CodeGenerator
 
 def main(file_name):
     with open(file_name, 'r') as input_file:
         scanner = Scanner(reader=Reader(input_file), start_state=State.states[0])
-        parser = Parser(scanner)
-        generator = CodeGenerator(scanner, parser)
+        generator = CodeGenerator(scanner)
+        parser = Parser.get_instance(scanner, generator)
+
         parser.parse()
     with open('parse_tree.txt', 'w', encoding="utf-8") as output_file:
         parser.print_parse_tree(output_file)

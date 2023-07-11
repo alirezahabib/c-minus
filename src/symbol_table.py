@@ -160,6 +160,7 @@ class Symbol_Table:
         self.table[-1]['attributes'] = num_of_cells
 
     def lookup(self, name, start_ind=0, in_declare=False, end_ind=-1) -> dict:
+        # print("inside lookup")
         # search in symbol table
         # search for it between the start_ind and end_ind of symbol table
         # if end_ind == -1 then it means to search till the end of symbol table
@@ -174,15 +175,23 @@ class Symbol_Table:
                 end -= 1
 
         while len(self.scope_stack) >= -nearest_scope:
+            # print("inside while")
+            # print(self.scope_stack, "this is scope stack")
             start = self.scope_stack[nearest_scope]
 
             for i in range(start, end):
+                # print("inside for")
                 row_i = self.table[i]
-                if not self.is_useless_row(i):
-                    if nearest_scope != -1 and row_i['kind'] == "param":
-                        pass
-                    elif row_i['lexeme'] == name:
-                        return row_i
+                # print("row_i before:", row_i)
+                # print("lexeme ", row_i['lexeme'])
+                # if not self.is_useless_row(i):
+                # print("inside if at all")
+                if nearest_scope != -1 and row_i['kind'] == "param":
+                    # print("inside wrong if")
+                    pass
+                elif row_i['lexeme'] == name:
+                    # print("inside right elif")
+                    return row_i
 
             nearest_scope -= 1
             end = start

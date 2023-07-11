@@ -158,6 +158,7 @@ class SymbolTable:
             return True
 
     def lookup(self, name, in_declare=False, end_ind=-1) -> dict:
+        # print("inside lookup")
         # search in symbol table
         # search for it between the start_ind and end_ind of symbol table
         # if end_ind == -1 then it means to search till the end of symbol table
@@ -174,6 +175,7 @@ class SymbolTable:
                 end -= 1
 
         while len(self.scope_stack) >= -nearest_scope:
+            # print("inside whileeeee")
             start = self.scope_stack[nearest_scope]
 
             for i in range(start, end):
