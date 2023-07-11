@@ -1237,15 +1237,17 @@ class Parser:
         #     break
         #     self.current_token = self.get_next_token()
         #     print(self.current_token)
-
         self.current_token, self.current_value = self.get_next_token()
+        while self.current_value != '{':
+            self.current_token, self.current_value = self.get_next_token()
+        print("token and value:" , self.current_token, self.current_value)
 
         stack = [grammar.non_terminals[0]]
         node_stack = [Node(grammar.non_terminals[0])]  # Node stack for the parse tree
         self.root = node_stack[0]
 
         while stack:
-            cnt = 0
+            # cnt = 0
             stack_top = stack[-1]
             node_stack_top = node_stack[-1]
             # print('stack_top:', stack_top)
@@ -1271,6 +1273,9 @@ class Parser:
                 stack.pop()
                 node_stack.pop()
                 self.current_token, self.current_value = self.get_next_token()
+                # stack.append()
+                print("looooooooooooooooook at this", self.current_token, self.current_value)
+                print("stack , node stack", stack, node_stack)
 
             else:
                 print("stack top, current value",stack_top , self.current_value)
@@ -1299,6 +1304,7 @@ class Parser:
                     stack.pop()
                 else:
                     print("in the sus else")
+                    print("production rule", production_rule)
                     # print('stack before:', stack)
                     # print('rule:', production_rule)
                     # print('current_value:', self.current_value)
@@ -1309,6 +1315,7 @@ class Parser:
                         nodes.append(Node(symbol, parent=node_stack_top))
                     for symbol in reversed(production_rule):
                         stack.append(symbol)
+                        print("stack append")
                         node_stack.append(nodes.pop())
                     # print('stack after:', stack)
 
