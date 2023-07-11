@@ -1228,9 +1228,9 @@ class Parser:
         #     self.current_token = self.get_next_token()
         #     print(self.current_token)
         self.current_token, self.current_value = self.get_next_token()
-        while self.current_value != '{':
-            self.current_token, self.current_value = self.get_next_token()
-        print("token and value:" , self.current_token, self.current_value)
+        # while self.current_value != '{':
+        #     self.current_token, self.current_value = self.get_next_token()
+        # print("token and value:" , self.current_token, self.current_value)
 
         stack = [grammar.non_terminals[0]]
         node_stack = [Node(grammar.non_terminals[0])]  # Node stack for the parse tree
@@ -1264,14 +1264,14 @@ class Parser:
                 node_stack.pop()
                 self.current_token, self.current_value = self.get_next_token()
                 # stack.append()
-                print("looooooooooooooooook at this", self.current_token, self.current_value)
-                print("stack , node stack", stack, node_stack)
+                # print("looooooooooooooooook at this", self.current_token, self.current_value)
+                # print("stack , node stack", stack, node_stack)
 
             else:
-                print("stack top, current value",stack_top , self.current_value)
-                print("parse - in else section")
+                # print("stack top, current value",stack_top , self.current_value)
+                # print("parse - in else section")
                 production_rule = self.transition_table[(stack_top, self.current_value)]
-                print(self.transition_table[(stack_top, self.current_value)])
+                # print(self.transition_table[(stack_top, self.current_value)])
                 # if stack_top == "Declaration-list" and self.current_value == "ID" and cnt == 0:
                 #     production_rule = ['Declaration', 'Declaration-list']
                 #     cnt +=1
@@ -1279,11 +1279,11 @@ class Parser:
                 # print(f'production_rule {(stack_top, self.current_value)}:', production_rule)
 
                 if production_rule is None:
-                    print("production rule is none")
-                    print("grammar.first[stack_top]", grammar.first[stack_top])
+                    # print("production rule is none")
+                    # print("grammar.first[stack_top]", grammar.first[stack_top])
                     if 'epsilon' in grammar.first[stack_top]:
                         production_rule = grammar.rules[stack_top][-1]
-                        print("production rule", production_rule)
+                        # print("production rule", production_rule)
                     else:
                         self.error(f"illegal {self.current_value}")
                         stack.pop()
@@ -1293,8 +1293,8 @@ class Parser:
                     Node('epsilon', parent=node_stack.pop())
                     stack.pop()
                 else:
-                    print("in the sus else")
-                    print("production rule", production_rule)
+                    # print("in the sus else")
+                    # print("production rule", production_rule)
                     # print('stack before:', stack)
                     # print('rule:', production_rule)
                     # print('current_value:', self.current_value)
@@ -1305,7 +1305,7 @@ class Parser:
                         nodes.append(Node(symbol, parent=node_stack_top))
                     for symbol in reversed(production_rule):
                         stack.append(symbol)
-                        print("stack append")
+                        # print("stack append")
                         node_stack.append(nodes.pop())
                     # print('stack after:', stack)
 
