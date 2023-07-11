@@ -14,6 +14,8 @@ def main(file_name):
     with open(file_name, 'r') as input_file:
         scanner = Scanner(reader=Reader(input_file), start_state=State.states[0])
         generator = CodeGenerator(scanner)
+        generator.pb.finalize()
+        # print(generator.pb.block)
         parser = Parser.get_instance(scanner, generator)
 
         parser.parse()

@@ -24,6 +24,7 @@ from scanner import KEYWORD, SYMBOL
 from symbol_table import Address
 from symbol_table import Symbol_Table
 
+# it is not used actually
 class OPERATIONS(Enum):
     ADD = "ADD"
     MULT = "MULT"
@@ -269,7 +270,7 @@ class PB:
     def get_tmp_address(self):
         self.address.last_tmp += 4
         self.address.all_addresses.append(self.address.last_tmp)
-        return Address(self.address.last_tmp.address)
+        return self.address.last_tmp
 
     # def get_current_tmp_addr(self):
     #     return self.last_tmp
@@ -280,7 +281,7 @@ class PB:
     def get_address(self):
         self.address.last_addr += 1
         self.address.all_addresses.append(self.address.last_addr)
-        return Address(self.address.last_addr.address)
+        return self.address.last_addr
 
     # modify this shiiiiiiiiiiiiiiiiiiiiit
     def modify(self, index, op, first_op="", second_op="", third_op=""):
@@ -342,7 +343,7 @@ class PB:
     def get_tmp_address_by_size(self, entries_type, array_size):
         self.address.last_tmp += entries_type * array_size
         self.address.all_addresses.append(self.address.last_tmp)
-        return Address(self.address.last_tmp.address)
+        return self.address.last_tmp
 
     def get_next_addr(self,addr):
         return self.address.all_addresses[self.address.all_addresses.index(addr)+1]
@@ -354,8 +355,21 @@ class PB:
         elif next_addr - addr == 1:
             return "void"
 
+    def finalize(self):
+        for j in range(len(self.block)):
+            row = self.block[j]
+            print(row)
+            for k in range(len(row)):
+                if row(k) == None:
+                    row[k] = "\t"
+            if row(0) == '+' or row(0) == '-' or row(0) == '*' or row(0) == '<' or row(0) == '==' or row(0) == ':=':
+                    row[0] = self.modify(j,row[0],row[1],row[2],row[3])
+
+        for l in range(len(self.block)):
+            self.block[l] = f"{self.block[l][0], self.block[l][1], self.block[l][2], self.block[l][3]}"
 
 # to be refactored
+
 class SemanticAnalyzer:
     def __init__(self):
         self.num_semantic_errors = 0
@@ -417,8 +431,6 @@ class CodeGenerator:
 
     def call_main(self):
         main_function_row = self.scanner.symbol_table.code_gen_st.lookup('main')
-        # print(main_function_row)
-        # set up the return address register of main
         self.pb.add_code(
             ":=",
             "#" + str(self.pb.get_line() + 2),
@@ -431,6 +443,7 @@ class CodeGenerator:
             # str(main_function_row["invocation_address"])
             "1"
         )
+        # self.pb.finalize()
 
     def declare_id(self):
         self.code_gen_st.modify_last_row(kind="var", type=self.ss.top())
@@ -484,13 +497,13 @@ class CodeGenerator:
         array_row = self.code_gen_st.get_last_row()
         # array address is the address of pointer to array
         # we need to allocate memory for the array itself and then assign the address of the first entry to the pointer
-        array_address = array_row["address"]
+        array_addr = array_row["address"]
         entries_type = array_row["type"]
         array_start_address = self.pb.get_tmp_address_by_size(entries_type, array_size)
         self.pb.add_code(
             ":=",
             "#" + str(array_start_address),
-            array_address
+            array_addr
         )
 
     def label(self):
@@ -500,48 +513,32 @@ class CodeGenerator:
         self.curr_repeats += 1
 
     def until(self):
-        # jump back to label if condition is true
-        # also check if there were any break statements before
         self.curr_repeats -= 1
-        temp_until_condition = self.ss.pop()  # the value that until should decide to jump based on it
-        # check breaks
-        # sdfasdfa
+        condition = self.ss.pop()
         while len(self.ss.stack) > 0 and self.ss.top() == "break":  # [-1] == "break":
             self.pb.modify(self.ss.stack[-2], "JP", self.pb.get_line() + 1)
             self.ss.pop_mult(2)
-        # jump back
-        self.pb.add_code("JPF", temp_until_condition,
+        self.pb.add_code("JPF", condition,
                          self.ss.top())
         self.ss.pop()
 
     def push_eq(self):
-        # in case of assignment, push = to stack
-        # used for finding out if there is a nested assignment
         self.ss.push("=")
 
     def start_call(self):
-        # start of function call
-        # row_id = self.symbol_table.lookup(self.semantic_stack[-1])['id']
         function_row_id = self.code_gen_st.get_row_id_by_address(self.ss.top())
         self.ss.pop()
         num_parameters = self.code_gen_st.get_row_by_id(function_row_id)["attributes"]
-        # add parameter types to stack in the form of tuple (type, is_array)
         for i in range(num_parameters, 0, -1):
-            temp_address_param = self.code_gen_st.get_row_by_id(function_row_id + i)["address"]
-            # type_param = self.get_operand_type(temp_address_param)
-            self.ss.push(temp_address_param)
-
-        # add the number of parameters to stack
+            temp_addr_param = self.code_gen_st.get_row_by_id(function_row_id + i)["address"]
+            self.ss.push(temp_addr_param)
         self.ss.push(num_parameters)
-        # add a counter for arguments - at first it is equal to number of parameters
         self.ss.push(num_parameters)
-        # add name of function to stack
         self.ss.push(self.code_gen_st.get_row_by_id(function_row_id)["lexeme"])
 
     def end_call(self):
-        # end of function call
-        self.no_more_arg_input = False
-        name_func = self.ss.pop()
+        self.no_more_input = False
+        function_name = self.ss.pop()
         counter_args = self.ss.pop()
         # num_parameters = self.ss.pop()
         # if counter_args != 0:
@@ -551,17 +548,13 @@ class CodeGenerator:
         #                                                 )
         #     self.pop_last_n(counter_args)
 
-        function_row = self.code_gen_st.lookup(name_func)
-        index = function_row['id']
-        # if index in self.FS:
-        #     self.semantic_analyzer.raise_semantic_error(1)  # todo added to avoid recursive call
-
-        # return if function_row does not have needed keys (may not happen!)
-        if "invocation_address" not in function_row or "return_address" not in function_row:
+        st_function_row = self.code_gen_st.lookup(function_name)
+        index = st_function_row['id']
+        if "invocation_address" not in st_function_row or "return_address" not in st_function_row:
             # print("error in function declaration")
             return
         # update the return address temp of function (we want the function to return here after invocation)
-        return_address_temp = function_row["return_address"]
+        return_address_temp = st_function_row["return_address"]
         self.pb.add_code(
             ":=",
             "#" + str(self.pb.get_line() + 2),
@@ -573,13 +566,13 @@ class CodeGenerator:
         # now that everything is set (including return address and arguments assignment), we can jump to the function
         self.pb.add_code(
             "JP",
-            function_row["invocation_address"]
+            st_function_row["invocation_address"]
         )
-        if function_row["type"] != "void":
-            returnee_copy = self.pb.get_tmp_address(1, function_row["type"])
+        if st_function_row["type"] != "void":
+            returnee_copy = self.pb.get_tmp_address(1, st_function_row["type"])
             self.pb.add_code(
                 ":=",
-                function_row["return_value"],
+                st_function_row["return_value"],
                 returnee_copy
             )
             self.ss.push(returnee_copy)
@@ -603,7 +596,7 @@ class CodeGenerator:
 
     def arg_input(self):
         # take input argument for function call
-        if not self.no_more_arg_input:
+        if not self.no_more_input:
             arg = self.ss.pop()
             type_arg = self.get_operand_type(arg)
             name_func = self.ss.pop()
@@ -648,16 +641,13 @@ class CodeGenerator:
 
     def p_id_index(self):  # p_id_index
         # push index of identifier into the semantic stack
-        lexeme = self._current_token[1]
-        index = self.scanner.get_symbol_index(lexeme)
-        self.ss.push(index)
+        lex = self._current_token[1]
+        ind = self.scanner.get_symbol_index(lex)
+        self.ss.push(ind)
 
     def p_id(self):  # p_id
-        # push address of identifier into the semantic stack
         lexeme = self._current_token[1]
         index = self.scanner.get_symbol_index(lexeme)
-        # st = self.scanner.symbol_table.get_st()
-        # -1 how
         address = self.scanner.symbol_table.symbol_table["address"][index]
         self.ss.push(address)
 

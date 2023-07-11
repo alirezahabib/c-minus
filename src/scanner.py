@@ -294,28 +294,28 @@ class Error:
     def __init__(self, title: str, content: str, line_number: int):
         """Inits Error.
 
-        :arg title: str: the title of the error
-        :arg content: str: the content of the error
-        :arg line_number: int: the line number of the error
+        :arg name: str: the title of the error
+        :arg message: str: the content of the error
+        :arg line: int: the line number of the error
         """
-        self._title: str = title
-        self._content: str = content
-        self._line_number: int = line_number
+        self.name: str = title
+        self.message: str = content
+        self.line: int = line_number
 
     @property
     def title(self) -> str:
         """Return the title of the error"""
-        return self._title
+        return self.name
 
     @property
     def content(self) -> str:
         """Return the content of the error"""
-        return self._content
+        return self.message
 
     @property
     def line_number(self) -> int:
         """Return the line number of the error"""
-        return self._line_number
+        return self.line
 
 
 

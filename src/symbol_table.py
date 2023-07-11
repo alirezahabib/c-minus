@@ -86,7 +86,7 @@ class Symbol_Table:
         self.modify_last_row("func", "void")
         self.table[-1]['attributes'] = 1
         self.address = Address.get_instance()
-        self.table.append({'id': 1, 'lexeme': 'somethingwild', 'kind': "param", 'attributes': '-', 'type': "int",
+        self.table.append({'id': 1, 'lexeme': 'init_lex', 'kind': "param", 'attributes': '-', 'type': "int",
                            'scope': 1, 'address': Address.get_instance().get_tmp_address()})  # ("int", 1)
         # self.scanner = scanner
 
@@ -99,8 +99,6 @@ class Symbol_Table:
         # print(self.table[-1])
 
     def modify_last_row(self, kind, type):
-        # after declaration of a variable by scanner, code generator needs
-        # to complete the declaration by modifying the last row of symbol table
         self.table[-1]['kind'] = kind
         self.table[-1]['type'] = type
         # self.table[-1]['address'] = self.address.get_tmp_address()  # (type, 1)
@@ -109,27 +107,16 @@ class Symbol_Table:
         self.table[-1]['attributes'] = '-'
         self.address_to_row[self.table[-1]['address']] = len(self.table) - 1
 
-    def modify_func_row_information(self, row_index, invocation_address, return_address, return_value):
-        # add a "invocation_address" field to the row,
-        # this is used when we declare a function and we want to invoke it. We should know where to jump to
-        self.table[row_index]['invocation_address'] = invocation_address
-        # add a "return_address" field to the row,
-        # anyone who calls the function should put its address (PC) in this address
-        self.table[row_index]['return_address'] = return_address
-        # return value is the address of a temp that is supposed to hold the return value of the function
+    def modify_func_row(self, row_index, invocation_addr, return_addr, return_value):
+        self.table[row_index]['invocation_address'] = invocation_addr
+        self.table[row_index]['return_address'] = return_addr
         self.table[row_index]['return_value'] = return_value
 
     def modify_attributes_last_row(self, num_attributes):
-        # used for array declaration and function declaration
-        # if arr_func == True then it is an array
-        # else it is a function
-        # note: for now it is only used for array declaration
-        self.table[-1]['attributes'] = num_attributes
+        # self.table[-1]['attributes'] = num_attributes
+        self.modify_attributes_by_index(-1, num_attributes)
 
-    def modify_attributes_row(self, row_id, num_attributes, arr_func: bool = True):
-        # used for modifying function No. of args after counting them
-        # if arr_func == True then it is an array
-        # else it is a function
+    def modify_attributes_by_index(self, row_id, num_attributes, arr_func: bool = True):
         self.table[row_id]['attributes'] = num_attributes
 
     def modify_kind_last_row(self, kind):
@@ -139,19 +126,17 @@ class Symbol_Table:
         self.current_scope += 1
         self.scope_stack.append(len(self.table))
 
+    def get_len(self):
+        return len(self.table)
+
     def end_scope(self):
-        # remove all rows of symbol table that are in the current scope
-        # and update the current scope
-        # remember function is first added and then the scope is added
-        # also param type of the function that the scope is created for,
-        # must not be removed
-        remove_from = len(self.table)
-        for i in range(self.scope_stack[-1], len(self.table)):
+        remove_ind = self.get_len()
+        for i in range(self.scope_stack[-1], self.get_len()):
             if self.has_type(i) or self.table[i]['kind'] != "param":
-                remove_from = i
+                remove_ind = i
                 break
 
-        self.table = self.table[:remove_from]
+        self.table = self.table[:remove_ind]
 
         self.current_scope -= 1
         self.scope_stack.pop()
@@ -159,42 +144,40 @@ class Symbol_Table:
     def declare_array(self, num_of_cells):
         self.table[-1]['attributes'] = num_of_cells
 
-    def lookup(self, name, start_ind=0, in_declare=False, end_ind=-1) -> dict:
-        # print("inside lookup")
-
-        return_row = None
-        curr_scope = -1
+    def lookup(self, name, start_ind=0, is_declaring=False, end_ind=-1) -> dict:
         end_index = end_ind
+        current_scope = -1
+        toReturn = None
 
         if end_ind == -1:
             end_index = len(self.table)
-            if in_declare and self.has_type(-1):
+            if is_declaring and self.has_type(-1):
                 end_index -= 1
 
-        while len(self.scope_stack) >= -curr_scope:
+        while len(self.scope_stack) >= -current_scope:
             # print("inside while")
             # print(self.scope_stack, "this is scope stack")
-            start = self.scope_stack[curr_scope]
+            start = self.scope_stack[current_scope]
 
             for i in range(start, end_index):
                 # print("inside for")
-                row_i = self.table[i]
+                row = self.table[i]
                 # print("row_i before:", row_i)
                 # print("lexeme ", row_i['lexeme'])
                 # if not self.is_useless_row(i):
                 # print("inside if at all")
-                if curr_scope != -1 and row_i['kind'] == "param":
+                if current_scope != -1 and row['kind'] == "param":
                     print("inside wrong if")
                     pass
-                elif row_i['lexeme'] == name:
+                elif row['lexeme'] == name:
                     print("inside right elif")
-                    print("row_i ", row_i)
-                    return row_i
+                    print("row_i ", row)
+                    return row
 
-            curr_scope -= 1
+            current_scope -= 1
             end_index = start
 
-        return return_row
+        return toReturn
 
     def remove_last_row(self):
         self.table.pop()
@@ -232,8 +215,8 @@ class PB:
     def __init__(self):
         self.block = []
         self.line = 0
-        self.last_tmp = Address(500 - 4)
-        self.last_addr = Address(100 - 4)
+        self.last_tmp = 500 - 4
+        self.last_addr = 100 - 4
         self.all_addresses = []
 
     def get_len(self):
@@ -256,7 +239,7 @@ class PB:
     def get_tmp_address(self):
         self.last_tmp += 4
         self.all_addresses.append(self.last_tmp)
-        return Address(self.last_tmp.address)
+        return self.last_tmp
 
     # def get_current_tmp_addr(self):
     #     return self.last_tmp
@@ -267,7 +250,7 @@ class PB:
     def get_address(self):
         self.last_addr += 1
         self.all_addresses.append(self.last_addr)
-        return Address(self.last_addr.address)
+        return self.last_addr
 
     # modify this shiiiiiiiiiiiiiiiiiiiiit
     def modify(self, index, op, first_op="", second_op="", third_op=""):
@@ -329,7 +312,7 @@ class PB:
     def get_tmp_address_by_size(self, entries_type, array_size):
         self.last_tmp += entries_type * array_size
         self.all_addresses.append(self.last_tmp)
-        return Address(self.last_tmp.address)
+        return self.last_tmp
 
     def get_next_addr(self,addr):
         return self.all_addresses[self.all_addresses.index(addr)+1]
