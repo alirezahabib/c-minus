@@ -44,6 +44,32 @@ rules = {
     'Arg-list': [['Expression', 'Arg-list-prime']],
     'Arg-list-prime': [[',', '#arg_input', 'Expression', 'Arg-list-prime'], ['epsilon', '#arg_input']]
 }
+action_symbols=[
+    "#call_main",
+    "#p_type",
+    "#declare_id",
+    "#dec_var",
+    "#dec_array",
+    "#dec_func",
+    "#end_func",
+    "#declare_entry_array",
+    "#break_jp",
+    "#save",
+    "#jpf_save",
+    "#jp",
+    "#label",
+    "#until",
+    "#p_id",
+    "#push_eq",
+    "#assign",
+    "#array_access",
+    "#push_op",
+    "#op",
+    "#p_num",
+    "#start_call",
+    "#end_call",
+    "#arg_input"
+]
 terminals = [
     "ID",
     ";",
@@ -669,9 +695,10 @@ follow = {
 }
 
 rules = {
-    # 'Program': [['Declaration-list','#call_main', '$']],
-    'Program': [['Declaration-list']],
+    'Program': [['Declaration-list','#call_main', '$']],
+    # 'Program': [['Declaration-list']],
     'Declaration-list': [['Declaration', 'Declaration-list'], ['epsilon']],
+    # 'Declaration-list': [['Declaration', 'Declaration-list']],
     'Declaration': [['Declaration-initial', 'Declaration-prime']],
     'Declaration-initial': [['#p_type', 'Type-specifier', '#declare_id', 'ID']],
     'Declaration-prime': [['Fun-declaration-prime'], ['Var-declaration-prime']],

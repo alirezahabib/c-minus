@@ -1,4 +1,7 @@
 # import logging  # Just for logging, you can remove it
+import string
+from enum import Enum
+from typing import Dict, Tuple, List, Optional, Set
 
 # logging.getLogger().setLevel(logging.INFO)
 # logging.getLogger().setLevel(logging.DEBUG)  # For more info
@@ -49,14 +52,20 @@ class SymbolTable:
     def add_symbol(self, symbol):
         # Symbols is a dictionary, so no need to check if symbol is already in the table
         self.symbols[symbol] = None
-        self.st = self.get_st()
-        the_row = self.code_gen_st.lookup(symbol, 0, False)
-        if the_row is not None and the_row["scope"] == self.code_gen_st.current_scope:
-            # this means that the variable is already declared,
-            # and we want to redefine it
-            del the_row["type"]
+        # self.table.append({'id': len(self.symbols), 'lexeme': symbol})
+        # self.symbols[symbol] = None
+        # self.st = self.get_st()
+        # the_row = self.code_gen_st.lookup(symbol, 0, False)
+        # if the_row is not None and the_row["scope"] == self.code_gen_st.current_scope:
+        #     # this means that the variable is already declared,
+        #     # and we want to redefine it
+        #     del the_row["type"]
 
         self.code_gen_st.insert(symbol)
+        # self.code_gen_st.modify_last_row(type="id",
+        #                                  scope=self.code_gen_st.current_scope,
+        #                                  kind=""
+        #                                  )
         # if self.semantic_stack[-1] == "void":
         #     self.semantic_analyzer.raise_semantic_error(line_no=self.current_line,
         #                                                 error=self.error_void_type,
@@ -72,6 +81,11 @@ class SymbolTable:
 
     def get_top_symbols(self):
         return self.symbols.keys[-1]
+
+    def exists(self, symbol):
+        if symbol in self.code_gen_st.table:
+            return True
+        return False
 
     def add_to_code_gen_st(self, symbol):
         self.code_gen_st.add_symbol(symbol)
@@ -236,6 +250,8 @@ class State:
         self.is_final = is_final
         self.is_star = is_star
         self.states[state_id] = self
+        self._is_terminal: bool = False
+        self._is_lookahead: bool = False
 
     def add_transition(self, characters, destination):
         self.transitions.update(dict.fromkeys(characters, destination))
@@ -246,18 +262,257 @@ class State:
         if None not in self.transitions:
             self.transitions[None] = destination
 
+    def get_is_final(self):
+        return self.is_final
+
+    def get_is_star(self):
+        return self.is_star
+
+    # @property
+    # def is_terminal(self) -> bool:
+    #     """Determines if the state is terminal or not."""
+    #     return self._is_terminal
+
+    @property
+    def is_lookahead(self) -> bool:
+        """Determines if the state is lookahead or not."""
+        return self._is_lookahead
+
     def next_state(self, next_char):
         return self.transitions.get(next_char)  # returns None if char is not in transitions
 
 
+class ErrorType(Enum):
+    NO_TRANSITION = 1
+    INCOMPLETE_TOKEN = 2
+
+class Error:
+    """
+    A class used to represent an error in scanner.
+    """
+
+    def __init__(self, title: str, content: str, line_number: int):
+        """Inits Error.
+
+        :arg title: str: the title of the error
+        :arg content: str: the content of the error
+        :arg line_number: int: the line number of the error
+        """
+        self._title: str = title
+        self._content: str = content
+        self._line_number: int = line_number
+
+    @property
+    def title(self) -> str:
+        """Return the title of the error"""
+        return self._title
+
+    @property
+    def content(self) -> str:
+        """Return the content of the error"""
+        return self._content
+
+    @property
+    def line_number(self) -> int:
+        """Return the line number of the error"""
+        return self._line_number
+
+
+
 class Scanner:
+    # token types
+    NUM: str = "NUM"
+    ID: str = "ID"
+    KEYWORD: str = "KEYWORD"
+    SYMBOL: str = "SYMBOL"
+    COMMENT: str = "COMMENT"
+    WHITESPACE: str = "WHITESPACE"
+    EOF: str = "EOF"
+
+    EOF_symbol: str = "$"
+
+    _digits: Set[str] = set(string.digits)
+    _letters: Set[str] = set(string.ascii_letters)
+    _alphanumerics: Set[str] = _digits.union(_letters)
     def __init__(self, reader: Reader, start_state: State):
+        self._alphanumerics = None
         self.symbol_table = SymbolTable()
         self.reader = reader
         self.start_state: State = start_state
         self.current_state: State = start_state
+        self._token_buffer: List[str] = []
         self.tokens = {}  # line_number: list of tokens
         self.lexical_errors = {}  # line_number: list of errors
+        self.scope_stack = [0]
+        self.symbol_tablee: Dict[str, list] = {"lexeme": [], "type": [], "size": [], "data_type": [], "scope": [],
+                                              "address": []}
+        for keyword in ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']:
+            # self.add_symbol(keyword, "keyword", 0, None, 1, None)
+            self.symbol_tablee["lexeme"].append(keyword)
+            self.symbol_tablee["type"].append("keyword")
+            self.symbol_tablee["size"].append(0)
+            self.symbol_tablee["data_type"].append(None)
+            self.symbol_tablee["scope"].append(1)
+            self.symbol_tablee["address"].append(None)
+        self._is_file_ended: bool = False
+        self._forward: int = 0
+        self._current_char: Optional[str] = None
+        # self._buffer_size = buffer_size
+        self._buffer_size = 1024
+        self._line_number: int = 1
+        self._errors_dict: Dict[int, List[Error]] = {}
+
+    @property
+    def _current_token(self) -> Optional[str]:
+        if self._token_buffer is not None:
+            return ''.join(self._token_buffer)
+        else:
+            return None
+
+
+    def update_symbol(self,
+                      index: int,
+                      symbol_type: str = None,
+                      size: int = None,
+                      data_type: str = None,
+                      scope: int = None,
+                      address: int = None):
+        if symbol_type is not None:
+            self.symbol_tablee["type"][index] = symbol_type
+        if size is not None:
+            self.symbol_tablee["size"][index] = size
+        if data_type is not None:
+            self.symbol_tablee["data_type"][index] = data_type
+        if scope is not None:
+            self.symbol_tablee["scope"][index] = scope
+        if address is not None:
+            self.symbol_tablee["address"][index] = address
+
+    def get_symbol_index(self, lexeme: str) -> int:
+        """Return index of the lexeme in the symbol table"""
+        # return self.symbol_table["lexeme"].index(lexeme)
+        current_scope_end = len(self.symbol_tablee["lexeme"])
+        for current_scope_start in self.scope_stack[::-1]:
+            if lexeme not in self.symbol_tablee["lexeme"][current_scope_start:current_scope_end]:
+                current_scope_end = current_scope_start
+                continue
+            else:
+                return self.symbol_tablee["lexeme"].index(lexeme, current_scope_start, current_scope_end)
+        return -1
+
+    def pop_scope(self, scope_start: int):
+        for column in self.symbol_tablee.values():
+            column.pop(len(column) - scope_start)
+
+    def save_symbols(self):
+        """Writes symbol table in symbol_table.txt."""
+        with open("symbol_table.txt", mode="w") as symbol_table_file:
+            for key, value in self.symbol_tablee.items():
+                symbol_table_file.write(f"{value}.\t{key}\n")
+
+    def _decrement_forward(self):
+        """Move forward back."""
+        if self._forward == 0:
+            self._forward = 2 * self._buffer_size - 1
+        else:
+            self._forward -= 1
+
+    @property
+    def line_number(self) -> int:
+        """Return current line number."""
+        return self._line_number
+
+    # def get_next_token(self) -> Tuple[str, str]:
+    #     """Return next token of input_file."""
+    #     if self._is_file_ended:
+    #         return "EOF", "$"
+    #
+    #     self._token_buffer.clear()
+    #     # self._current_state = self._states[0]
+    #     self._current_state = self.start_state
+    #     while True:
+    #         # Check terminal
+    #         if self._current_state.get_is_final():
+    #             # Terminal state
+    #             if self._current_state.get_is_star():
+    #                 self._token_buffer.pop()
+    #                 self._decrement_forward()
+    #                 # update line number
+    #                 if self._current_char == '\n':
+    #                     self._line_number -= 1
+    #             token = self._get_token_tuple()
+    #             if token[0] in {self.WHITESPACE, self.COMMENT}:
+    #                 self._token_buffer.clear()
+    #                 # self._current_state = self._states[0]
+    #                 self._current_state = self.start_state
+    #             else:
+    #                 return token
+
+    def _get_token_tuple(self) -> Tuple[str, str]:
+        """Return tuple with form (token_type, token_lexeme)"""
+        if self._current_state.state_type == NUM:
+            return self.NUM, self._current_token
+        elif self._current_state.state_type == ID:
+            token_type = self._get_token_type()
+            return token_type, self._install_id()
+        elif self._current_state.state_type == SYMBOL:
+            return self.SYMBOL, self._current_token
+        elif self._current_state.state_type == COMMENT :
+            return self.COMMENT, self._current_token
+        elif self._current_state.state_type == WHITESPACE:
+            return self.WHITESPACE, self._current_token
+
+    def _get_token_type(self) -> str:
+        """Return \"KEYWORD\" if current token is a keyword else \"ID\"."""
+        if self._current_token in ['break', 'else', 'if', 'int', 'repeat', 'return', 'until', 'void']:
+            return self.KEYWORD
+        return self.ID
+
+
+    def _install_id(self):
+        """Adds current id to symbol table if it is not."""
+        token: str = self._current_token
+        if token not in self.symbol_tablee["lexeme"]:
+            self.add_symbol(token, None, 0, None, None)
+        return token
+
+    def _handle_error(self, error_type: ErrorType):
+        """Adds occurred error to error dict."""
+        error = None
+        if error_type == ErrorType.NO_TRANSITION:
+            if self._current_state.id == 1 and self._current_char in self._alphanumerics:
+                error = Error("Invalid number", self._current_token, self._line_number)
+            elif self._current_state.id == 17 and self._current_char == '/':
+                error = Error("Unmatched comment", self._current_token, self._line_number)
+            else:
+                error = Error("Invalid input", self._current_token, self._line_number)
+        elif error_type == ErrorType.INCOMPLETE_TOKEN:
+            if self._current_state.id in {13, 14}:
+                line_number: int = self._line_number - self._token_buffer.count('\n')
+                error = Error("Unclosed comment", f"{''.join(self._token_buffer[:7])}...", line_number)
+
+        if error is None:
+            error = Error("Undefined Error!", self._current_token, self._line_number)
+
+        if error.line_number in self._errors_dict:
+            self._errors_dict[error.line_number].append(error)
+        else:
+            self._errors_dict[error.line_number] = [error]
+
+    def add_symbol(self,
+                   lexeme: str,
+                   symbol_type: str = None,
+                   size: int = 0,
+                   data_type: str = None,
+                   scope: int = None,
+                   address: int = None):
+        """Adds a new row to the symbol table"""
+        self.symbol_tablee["lexeme"].append(lexeme)
+        self.symbol_tablee["type"].append(symbol_type)
+        self.symbol_tablee["size"].append(size)
+        self.symbol_tablee["data_type"].append(data_type)
+        self.symbol_tablee["scope"].append(scope)
+        self.symbol_tablee["address"].append(address)
 
     def get_next_token(self):
         self.current_state = self.start_state
@@ -274,6 +529,7 @@ class Scanner:
 
         if self.current_state.state_type == ID:
             self.symbol_table.add_symbol(token_name)
+            # self.symbol_table.code_gen_st.modify_last_row()
             if token_name in keywords:
                 self.symbol_table.add_symbol_to_new_st(token_name, self.current_state.state_type
                                                        , 1, token_name, self.symbol_table.scope_stack[-1])

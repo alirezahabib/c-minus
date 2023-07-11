@@ -1,4 +1,5 @@
-from typing import Optional
+import json
+from typing import Optional, List, Union, Set, Dict, Tuple
 
 from anytree import Node, RenderTree
 
@@ -233,6 +234,12 @@ class SS:
 #
 #
 class PB:
+    instance : Optional['PB'] = None
+    @staticmethod
+    def get_instance():
+        if PB.instance == None:
+            PB.instance = PB()
+        return PB.instance
     def __init__(self):
         self.block = []
         self.line = 0
@@ -369,7 +376,7 @@ class CodeGenerator:
     def __init__(self, scanner: Scanner): #, address : Address):
         self.ss = SS()
         self.address = Address.get_instance()
-        self.pb = PB()
+        self.pb = PB.get_instance()
         # self.st = st.SymbolTable()
         self.loop = []
         self.scanner = scanner
@@ -415,12 +422,14 @@ class CodeGenerator:
         self.pb.add_code(
             ":=",
             "#" + str(self.pb.get_line() + 2),
-            str(main_function_row["return_address"])
+            #str(main_function_row["return_address"])
+            str(0)
         )
         # now jump to the invocation address of main
         self.pb.add_code(
             "JP",
-            str(main_function_row["invocation_address"])
+            # str(main_function_row["invocation_address"])
+            "1"
         )
 
     def declare_id(self):
@@ -431,6 +440,33 @@ class CodeGenerator:
             self.code_gen_st.get_last_row()["address"],
         )
         self.ss.pop()
+
+    def dec_var(self):# declare_var
+        # assign an address to the identifier, assign 0 to the variable in the program block
+        # and update identifier's row in the symbol table
+        data_type = self.ss.stack[-2]
+        index = self.ss.stack[-1]
+        self.ss.pop_mult(2)
+
+        self.pb.add_code(f"(ASSIGN, #0, {self.pb.get_tmp_address()},\t)")
+        self.scanner.update_symbol(index,
+                                    symbol_type="var",
+                                    size=0,
+                                    data_type=data_type,
+                                    scope=len(self.scanner.scope_stack),
+                                    address=self.pb.get_current_tmp_addr())
+        # self.pb.last_tmp += 4
+
+    def p_id_index(self):  # p_id_index it is either p_id or declare_id
+        # push index of identifier into the semantic stack
+        lexeme = self._current_token[1]
+        index = self.scanner.get_symbol_index(lexeme)
+        self.ss.push(index)
+
+    def end_function(self):  # end_function (probably to replace end_func)
+        # deletes the current scope
+        scope_start = self.scanner.scope_stack.pop()
+        self.scanner.pop_scope(scope_start)
 
     # refactore this shiiiiiiiiiiiiiit
     def declare_entry_array(self):
@@ -846,6 +882,11 @@ class Parser:
             Parser.instance = Parser(scanner, code_generator)
         return Parser.instance
 
+    _accept: str = "accept"
+    _shift: str = "shift"
+    _reduce: str = "reduce"
+    _goto: str = "goto"
+
     def __init__(self, scanner: Scanner, code_generator: CodeGenerator):
         self.current_token = None
         self.current_value = None
@@ -856,21 +897,28 @@ class Parser:
         self.create_transition_table()
         self.code_generator = code_generator
 
+        # self._parse_stack: List[Union[str, Node]] = ["0"]
+        # self._update_current_token()
+        # self._read_table()
+
     def get_current_token(self):
         return self.current_token
 
     def create_transition_table(self):
         for non_terminal in grammar.non_terminals:
-            for terminal in grammar.terminals + ['$']:
-                self.transition_table[(non_terminal, terminal)] = self.find_production_rule(non_terminal, terminal)
+            for terminal in grammar.terminals + ['$'] + grammar.action_symbols:
+                if terminal in grammar.action_symbols:
+                    self.transition_table[(non_terminal, terminal)] = [terminal]
+                else:
+                    self.transition_table[(non_terminal, terminal)] = self.find_production_rule(non_terminal, terminal)
 
     def find_production_rule(self, non_terminal, terminal):
         for rule in grammar.rules[non_terminal]:
-            print("this is non terminal" , non_terminal)
-            print("this is grammar rules", grammar.rules[non_terminal])
-            print("this is rule:", rule)
-            print("this is terminal", terminal)
-            print(rule, self.find_first(rule))
+            # print("this is non terminal" , non_terminal)
+            # print("this is grammar rules", grammar.rules[non_terminal])
+            # print("this is rule:", rule)
+            # print("this is terminal", terminal)
+            # print(rule, self.find_first(rule))
             rule_prime = []
             for st in rule:
                 if st[0] != '#':
@@ -919,9 +967,180 @@ class Parser:
             parse_value = '$'
         elif next_token.type == ctoken.ID:
             parse_value = 'ID'
+            # if not self.scanner.symbol_table.exists(next_token.value):
+            #     self.scanner.symbol_table.append({"index": len(self.scanner.symbol_table)+1, "name": next_token.value, "type": "ID"})
         elif next_token.type == ctoken.NUM:
             parse_value = 'NUM'
         return next_token, parse_value
+
+    # def _read_table(self):
+    #     """Initializes terminals, non_terminals, first_sets, follow_sets, grammar and parse_table."""
+    #     with open("table.json", mode="r") as table_file:
+    #         table: dict = json.load(table_file)
+    #
+    #     # set of grammars terminals
+    #     self._terminals: Set[str] = set(table["terminals"])
+    #     # set of grammars non-terminals
+    #     self._non_terminals: Set[str] = set(table["non_terminals"])
+    #     # first and follow sets of non-terminals
+    #     self._first_sets: Dict[str, Set[str]] = dict(zip(table["first"].keys(), map(set, table["first"].values())))
+    #     self._follow_sets: Dict[str, Set[str]] = dict(zip(table["follow"].keys(), map(set, table["follow"].values())))
+    #     # grammar's productions
+    #     self._grammar: Dict[str, List[str]] = table["grammar"]
+    #     # SLR parse table
+    #     self._parse_table: Dict[str, Dict[str, Tuple[str, str]]] = dict(
+    #         zip(table["parse_table"].keys(), map(lambda row: dict(
+    #             zip(row.keys(), map(lambda entry: tuple(entry.split("_")), row.values()))
+    #         ), table["parse_table"].values()))
+    #     )
+
+
+    # def run(self):
+    #     """Parses the input. Return True if UNEXPECTED_EOF"""
+    #     self.code_generator.ss.push(len(self.code_generator.pb.block))
+    #     self.code_generator.pb.add_code(None,None)
+    #     while True:
+    #         # get action from parse_table
+    #         last_state = self._parse_stack[-1]
+    #         try:
+    #             action = self._parse_table[last_state].get(self._current_input)
+    #         except KeyError:
+    #             # invalid state
+    #             raise Exception(f"State \"{last_state}\" does not exist.")
+    #         if action is not None:
+    #             # perform the action
+    #             if action[0] == self._accept:
+    #                 # accept
+    #                 break
+    #             elif action[0] == self._shift:
+    #                 # push current_token and shift_state into the stack
+    #                 shift_state = action[1]
+    #                 self._parse_stack.append(Node(f"({self._current_token[0]}, {self._current_token[1]})"))
+    #                 self._parse_stack.append(shift_state)
+    #
+    #                 # get next token
+    #                 self._update_current_token()
+    #             elif action[0] == self._reduce:
+    #                 # pop rhs of the production from the stack and update parse tree
+    #                 production_number = action[1]
+    #                 self.generate_code(int(production_number))
+    #                 production = self._grammar[production_number]
+    #                 production_lhs = production[0]
+    #                 production_rhs_count = self._get_rhs_count(production)
+    #                 production_lhs_node: Node = Node(production_lhs)
+    #                 if production_rhs_count == 0:
+    #                     node = Node("epsilon")
+    #                     node.parent = production_lhs_node
+    #                 else:
+    #                     popped_nodes = []
+    #                     for _ in range(production_rhs_count):
+    #                         self._parse_stack.pop()
+    #                         popped_nodes.append(self._parse_stack.pop())
+    #                     for node in popped_nodes[::-1]:
+    #                         node.parent = production_lhs_node
+    #
+    #                 # push lhs of the production and goto_state into the stack
+    #                 last_state = self._parse_stack[-1]
+    #                 try:
+    #                     goto_state = self._parse_table[last_state][production_lhs][1]
+    #                 except KeyError:
+    #                     # problem in parse_table
+    #                     raise Exception(f"Goto[{last_state}, {production_lhs}] is empty.")
+    #                 self._parse_stack.append(production_lhs_node)
+    #                 self._parse_stack.append(goto_state)
+    #             else:
+    #                 # problem in parse_table
+    #                 raise Exception(f"Unknown action: {action}.")
+    #         else:
+    #             if self.handle_error():
+    #                 # failure if UNEXPECTED_EOF
+    #                 self._failure = True
+    #                 break
+    #
+    # def handle_error(self) -> bool:
+    #     """Handles syntax errors. Return True if error is UNEXPECTED_EOF"""
+    #     # discard the first input
+    #     self._syntax_errors.append(Error(ErrorType.ILLEGAL_TOKEN, self._current_token[1], self._scanner.line_number))
+    #     self._update_current_token()
+    #
+    #     # pop from stack until state has non-empty goto cell
+    #     while True:
+    #         state = self._parse_stack[-1]
+    #         goto_and_actions_of_current_state = self._parse_table[state].values()
+    #         # break if the current state has a goto cell
+    #         if any(map(lambda table_cell: table_cell[0] == self._goto,
+    #                    goto_and_actions_of_current_state)):
+    #             break
+    #         discarded_state, discarded_node = self._parse_stack.pop(), self._parse_stack.pop()
+    #         self._syntax_errors.append(Error(ErrorType.STACK_CORRECTION, discarded_node, self._scanner.line_number))
+    #
+    #     goto_keys = self._get_goto_non_terminals(state)
+    #     # discard input, while input not in any follow(non_terminal)
+    #     selected_non_terminal = None
+    #     while True:
+    #         for non_terminal in goto_keys:
+    #             if self._current_input in self._follow_sets[non_terminal]:
+    #                 selected_non_terminal = non_terminal
+    #                 break
+    #         if selected_non_terminal is None:
+    #             if self._current_input == Scanner.EOF_symbol:
+    #                 # input is EOF, halt parser
+    #                 self._syntax_errors.append(Error(ErrorType.UNEXPECTED_EOF, "", self._scanner.line_number))
+    #                 return True
+    #             else:
+    #                 # discard input
+    #                 self._syntax_errors.append(
+    #                     Error(ErrorType.TOKEN_DISCARDED, self._current_token[1], self._scanner.line_number))
+    #                 self._update_current_token()
+    #         else:
+    #             # input is in follow(non_terminal)
+    #             break
+    #     self._parse_stack.append(Node(selected_non_terminal))
+    #     self._parse_stack.append(self._parse_table[state][selected_non_terminal][1])
+    #     self._syntax_errors.append(
+    #         Error(ErrorType.MISSING_NON_TERMINAL, selected_non_terminal, self._scanner.line_number))
+    #     return False
+    #
+    # def save_parse_tree(self):
+    #     """Writes parse tree in parse_tree.txt."""
+    #     # empty file if failure
+    #     if self._failure:
+    #         with open("parse_tree.txt", mode='w') as parse_tree_file:
+    #             parse_tree_file.write("")
+    #             return
+    #
+    #     root = self._parse_stack[1]
+    #     # add EOF node
+    #     node = Node("$")
+    #     node.parent = root
+    #
+    #     # write parse tree in the file
+    #     lines = []
+    #     for pre, fill, node in RenderTree(root):
+    #         lines.append(str(f"{pre}{node.name}\n"))
+    #     with open("parse_tree.txt", mode='w', encoding="utf-8") as parse_tree_file:
+    #         parse_tree_file.writelines(lines)
+    #
+    # def save_syntax_errors(self):
+    #     """Writes syntax errors in syntax_errors.txt."""
+    #     with open("syntax_errors.txt", "w") as syntax_errors_file:
+    #         if len(self._syntax_errors) == 0:
+    #             syntax_errors_file.write("There is no syntax error.")
+    #         else:
+    #             for error in self._syntax_errors:
+    #                 syntax_errors_file.write(f"{error.content}\n")
+    #
+    # def save_semantic_errors(self):
+    #     """Writes semantic errors in semantic_errors.txt"""
+    #     with open("semantic_errors.txt", "w") as semantic_errors_file:
+    #         if len(self._semantic_errors) == 0:
+    #             semantic_errors_file.write("The input program is semantically correct.")
+    #
+    # def save_program_block(self):
+    #     """Writes program block in output.txt"""
+    #     with open("output.txt", "w") as output_file:
+    #         for i in range(len(self._program_block)):
+    #             output_file.write(f"{i}\t{self._program_block[i]}\n")
 
 
     # refactore this shiiiiiiiiiiit
@@ -1002,6 +1221,15 @@ class Parser:
     #
     #     return remove_duplicates(rule_first)
 
+    # def _update_current_token(self):
+    #     """Stores next token in _current_token and updates _current_input."""
+    #     self._current_token: Tuple[str, str] = self._scanner.get_next_token()
+    #     self._current_input: str = ""
+    #     if self._current_token[0] in {Scanner.KEYWORD, Scanner.SYMBOL, Scanner.EOF}:
+    #         self._current_input = self._current_token[1]
+    #     else:
+    #         self._current_input = self._current_token[0]
+
     def parse(self):
         # for key, value in self.transition_table.items():
         #     print(key, value)
@@ -1017,6 +1245,7 @@ class Parser:
         self.root = node_stack[0]
 
         while stack:
+            cnt = 0
             stack_top = stack[-1]
             node_stack_top = node_stack[-1]
             # print('stack_top:', stack_top)
@@ -1038,16 +1267,28 @@ class Parser:
                 print("parse - in action symbol section")
                 cg = CodeGenerator(self.scanner)
                 getattr(cg, stack_top[1:])()
+                print("stack , node stack", stack, node_stack)
                 stack.pop()
                 node_stack.pop()
+                self.current_token, self.current_value = self.get_next_token()
 
             else:
+                print("stack top, current value",stack_top , self.current_value)
+                print("parse - in else section")
                 production_rule = self.transition_table[(stack_top, self.current_value)]
+                print(self.transition_table[(stack_top, self.current_value)])
+                # if stack_top == "Declaration-list" and self.current_value == "ID" and cnt == 0:
+                #     production_rule = ['Declaration', 'Declaration-list']
+                #     cnt +=1
+                print(production_rule)
                 # print(f'production_rule {(stack_top, self.current_value)}:', production_rule)
 
                 if production_rule is None:
+                    print("production rule is none")
+                    print("grammar.first[stack_top]", grammar.first[stack_top])
                     if 'epsilon' in grammar.first[stack_top]:
                         production_rule = grammar.rules[stack_top][-1]
+                        print("production rule", production_rule)
                     else:
                         self.error(f"illegal {self.current_value}")
                         stack.pop()
@@ -1057,6 +1298,7 @@ class Parser:
                     Node('epsilon', parent=node_stack.pop())
                     stack.pop()
                 else:
+                    print("in the sus else")
                     # print('stack before:', stack)
                     # print('rule:', production_rule)
                     # print('current_value:', self.current_value)

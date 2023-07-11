@@ -147,7 +147,7 @@ class Symbol_Table:
         # must not be removed
         remove_from = len(self.table)
         for i in range(self.scope_stack[-1], len(self.table)):
-            if self.is_useless_row(i) or self.table[i]['kind'] != "param":
+            if self.has_type(i) or self.table[i]['kind'] != "param":
                 remove_from = i
                 break
 
@@ -161,47 +161,45 @@ class Symbol_Table:
 
     def lookup(self, name, start_ind=0, in_declare=False, end_ind=-1) -> dict:
         # print("inside lookup")
-        # search in symbol table
-        # search for it between the start_ind and end_ind of symbol table
-        # if end_ind == -1 then it means to search till the end of symbol table
 
-        row_answer = None
-        nearest_scope = -1
-        end = end_ind
+        return_row = None
+        curr_scope = -1
+        end_index = end_ind
 
         if end_ind == -1:
-            end = len(self.table)
-            if in_declare and self.is_useless_row(-1):
-                end -= 1
+            end_index = len(self.table)
+            if in_declare and self.has_type(-1):
+                end_index -= 1
 
-        while len(self.scope_stack) >= -nearest_scope:
+        while len(self.scope_stack) >= -curr_scope:
             # print("inside while")
             # print(self.scope_stack, "this is scope stack")
-            start = self.scope_stack[nearest_scope]
+            start = self.scope_stack[curr_scope]
 
-            for i in range(start, end):
+            for i in range(start, end_index):
                 # print("inside for")
                 row_i = self.table[i]
                 # print("row_i before:", row_i)
                 # print("lexeme ", row_i['lexeme'])
                 # if not self.is_useless_row(i):
                 # print("inside if at all")
-                if nearest_scope != -1 and row_i['kind'] == "param":
-                    # print("inside wrong if")
+                if curr_scope != -1 and row_i['kind'] == "param":
+                    print("inside wrong if")
                     pass
                 elif row_i['lexeme'] == name:
-                    # print("inside right elif")
+                    print("inside right elif")
+                    print("row_i ", row_i)
                     return row_i
 
-            nearest_scope -= 1
-            end = start
+            curr_scope -= 1
+            end_index = start
 
-        return row_answer
+        return return_row
 
     def remove_last_row(self):
         self.table.pop()
 
-    def is_useless_row(self, id):
+    def has_type(self, id):
         if "type" not in self.get_row_by_id(id):
             return True
 
@@ -225,6 +223,12 @@ class Symbol_Table:
 
 
 class PB:
+    instance : Optional['PB'] = None
+    @staticmethod
+    def get_instance():
+        if PB.instance is None:
+            PB.instance = PB()
+        return PB.instance
     def __init__(self):
         self.block = []
         self.line = 0
