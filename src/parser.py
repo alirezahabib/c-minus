@@ -16,6 +16,9 @@ class Parser:
         self.root = None
         self.create_transition_table()
 
+    def get_current_token(self):
+        return self.current_token
+
     def create_transition_table(self):
         for non_terminal in grammar.non_terminals:
             for terminal in grammar.terminals + ['$']:
@@ -42,6 +45,8 @@ class Parser:
                 break
             if t == 'epsilon':
                 continue
+            if t[0] == '#':
+                return first.append(t)
             first.extend(grammar.first[t])
             if 'epsilon' not in grammar.first[t]:
                 break

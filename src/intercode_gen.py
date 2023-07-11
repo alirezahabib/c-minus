@@ -479,7 +479,7 @@ class SemanticAnalyzer:
 
 # main class
 class CodeGenerator:
-    def __init__(self, scanner: Scanner, parser: Parser, address : Address):
+    def __init__(self, scanner: Scanner, parser: Parser): #, address : Address):
         self.ss = SS()
         self.address = Address.get_instance()
         self.pb = PB()
@@ -488,10 +488,11 @@ class CodeGenerator:
         self.scanner = scanner
         self.parser = parser
         self.break_stack = []
-        self.get_curr_input()
+
         self.symbol_table = self.scanner.symbol_table
-        self.code_gen_st = Symbol_Table.get_instance(address)
+        self.code_gen_st = Symbol_Table.get_instance()
         self.curr_repeats = 0
+        self.get_curr_input()
         # self.semantic_analyzer = SemanticAnalyzer()
         # # errors
         # self.error_scoping = "#{0}: Semantic Error! '{1}' is not defined.{2}{3}{4}"
@@ -516,10 +517,16 @@ class CodeGenerator:
     '''
 
     def get_curr_input(self):
-        self._current_token = self.parser.get_current_token()
+        self._current_token = self.parser.get_next_token()
+        print(self._current_token)
+        print(self._current_token[0])
+        print(self._current_token[1])
+        print(self._current_token[0].type)
         # self._current_token = self.parsre.get_current_token()[0]
         toCheck = KEYWORD + SYMBOL + "$"
-        if self._current_token[0] in toCheck:
+        if self._current_token == None:
+            return
+        if self._current_token[0].type in toCheck:
             self._current_input = self._current_token[1]
         else:
             self._current_input = self._current_token[0]

@@ -16,12 +16,13 @@ def main(file_name):
         parser = Parser(scanner)
         generator = CodeGenerator(scanner, parser)
         parser.parse()
-    with open('parse_tree.txt', 'w') as output_file:
+    with open('parse_tree.txt', 'w', encoding="utf-8") as output_file:
         parser.print_parse_tree(output_file)
     with open('syntax_errors.txt', 'w') as output_file:
         output_file.write(parser.repr_syntax_errors())
-    with open("intermediate_code.txt", 'w') as output_file:
-        output_file.write(generator.pb.block)
+    # with open("intermediate_code.txt", 'w') as output_file:
+    #     output_file.write(generator.pb.block)
+    print(generator.pb.block)
     # with open('tokens.txt', 'w') as output_file:
     #     output_file.write(str(scanner))
     # with open('symbol_table.txt', 'w') as output_file:
