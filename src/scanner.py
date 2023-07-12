@@ -160,6 +160,7 @@ class Scanner:
         if self.is_eof_reached:
             return '$', line_updated
         if self.line_number == 0 or self.end_pnt >= len(self.current_line) - 1:
+            # print("this is input file:", self.input_file)
             new_line = self.input_file.readline()
             if len(new_line) == 0:
                 # end of file
