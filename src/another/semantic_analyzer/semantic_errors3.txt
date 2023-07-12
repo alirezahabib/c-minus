@@ -1,0 +1,4 @@
+#6: Semantic Error! 'count' is not defined.
+#6: Semantic Error! 'count' is not defined.
+#30: Semantic Error! 'count' is not defined.
+#32: Semantic Error! 'count' is not defined.

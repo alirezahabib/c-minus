@@ -45,6 +45,7 @@ for i in range(10):
     list_needed_files += [f"tester/results/result{i+1}"]
 list_needed_files += [f"tester/output"]
 list_needed_files += ["tester/out"]
+list_needed_files += ["out"]
 
 # for i in range(10):
 #     # other_list.append(f"test/T{i+1}/input.txt")
@@ -72,127 +73,140 @@ class DummyFile:
     def close(self):
         pass
 
-# in_file = create_file_by_mode("input.txt", "r")
-# out_file = create_file_by_mode("tokens.txt", "w+")
-# lex_file = create_file_by_mode("lexical_errors.txt", "w+")
-# sym_file = create_file_by_mode("symbol_table.txt", "w+")
-# parser_errors_file = create_file_by_mode("syntax_errors.txt", "w+")
-# parser_tree_file = create_file_by_mode("parse_tree.txt", "w+", encoding='utf-8')
-# generated_code_file = create_file_by_mode("output.txt", "w+")
-# semantic_errors_file = create_file_by_mode("semantic_errors.txt", "w+")
-#
-# scanner = Scanner(
-#     input_file=in_file,
-#     output_file=out_file,
-#     lex_file=lex_file,
-#     sym_file=sym_file,
-#     symbol_table=symbol_table
-# )
-#
-# code_generator = CodeGenerator(symbol_table=symbol_table, heap=heap_manager)
-#
-# parser = Parser(errors_file=parser_errors_file, parse_tree_file=parser_tree_file,
-#                 scanner=scanner, code_gen=code_generator)
-# parser.run()
-#
-# code_generator.write_pb_to_file(generated_code_file, semantic_errors_file)
-#
-#
-#
-#
-# # tester()
-# # print("test finished")
-#
-#
-#
-# in_file.close()
-# out_file.close()
-# lex_file.close()
-# sym_file.close()
-# parser_errors_file.close()
-# semantic_errors_file.close()
-# generated_code_file.close()
+in_file = create_file_by_mode("input.txt", "r")
+out_file = create_file_by_mode("tokens.txt", "w+")
+lex_file = create_file_by_mode("lexical_errors.txt", "w+")
+sym_file = create_file_by_mode("symbol_table.txt", "w+")
+parser_errors_file = create_file_by_mode("syntax_errors.txt", "w+")
+parser_tree_file = create_file_by_mode("parse_tree.txt", "w+", encoding='utf-8')
+generated_code_file = create_file_by_mode("output.txt", "w+")
+semantic_errors_file = create_file_by_mode("semantic_errors.txt", "w+")
+
+scanner = Scanner(
+    input_file=in_file,
+    output_file=out_file,
+    lex_file=lex_file,
+    sym_file=sym_file,
+    symbol_table=symbol_table
+)
+
+code_generator = CodeGenerator(symbol_table=symbol_table, heap=heap_manager)
+
+parser = Parser(errors_file=parser_errors_file, parse_tree_file=parser_tree_file,
+                scanner=scanner, code_gen=code_generator)
+parser.run()
+
+code_generator.write_pb_to_file(generated_code_file, semantic_errors_file)
+
+
+
+
 # tester()
 # print("test finished")
-import tester.vm as vm
+
+
+
+in_file.close()
+out_file.close()
+lex_file.close()
+sym_file.close()
+parser_errors_file.close()
+semantic_errors_file.close()
+generated_code_file.close()
+# tester()
+print("test finished")
+# import vm as vm
 import shutil
 import filecmp
-def tester():
-    for i in range(10):
-        ''' we wanna run the compiler on input.txt files stored in test folder, input.txt for testcase1 stored in T1 folder in test folder
-            input.txt for testcase2 stored in T2 folder in test folder and so on
-            we compile each input.txt file and store the output in output.txt file in tester folder
-            we run vm on output.txt file wich stores the result in out.txt file in tester folder
-            we compare the out.txt file in tester folder with expected.txt file in T1 folder for testcase1 and so on
-            the input files will be provided and we need to read them
-            the output files will not exist at i==0 and we have to create them and write the output in them
-            for the next iterations we need to edit the output files and write the output in them
-        '''
-
-        in_file = create_file_by_mode(f"test/Fixed_TestCases_3/TestCases/T{i+1}/input.txt", "r")
-        # print("IN FILE FOR I:", i+1, "is", in_file)
-        out_file = create_file_by_mode("tokens.txt", "w+")
-        lex_file = create_file_by_mode("lexical_errors.txt", "w+")
-        sym_file = create_file_by_mode("symbol_table.txt", "w+")
-        parser_errors_file = create_file_by_mode("syntax_errors.txt", "w+")
-        parser_tree_file = create_file_by_mode("parse_tree.txt", "w+", encoding='utf-8')
-        generated_code_file = create_file_by_mode("tester/output.txt", "w+")
-        semantic_errors_file = create_file_by_mode("semantic_errors.txt", "w+")
-
-        scanner = Scanner(
-            input_file=in_file,
-            output_file=out_file,
-            lex_file=lex_file,
-            sym_file=sym_file,
-            symbol_table=symbol_table
-        )
-
-        code_generator = CodeGenerator(symbol_table=symbol_table, heap=heap_manager)
-
-        parser = Parser(errors_file=parser_errors_file, parse_tree_file=parser_tree_file,
-                        scanner=scanner, code_gen=code_generator)
-        parser.run()
-
-        code_generator.write_pb_to_file(generated_code_file, semantic_errors_file)
-        print("THIS IS I:", i+1)
-        print(generated_code_file.read())
-
-        vm.main()
-
-        out_vm_file = create_file_by_mode("tester/out.txt", "r")
-        expected_file = create_file_by_mode(f"test/Fixed_TestCases_3/TestCases/T{i+1}/expected.txt", "r")
-        var_out = out_vm_file.read()
-        var_expected = expected_file.read()
-        result_file = create_file_by_mode(f"tester/results/result{i+1}.txt", "w+")
-        # if var_out == var_expected write in result file "pass" else write "fail"
-        print("var_out:", var_out)
-        print("var_expected:", var_expected)
-        if var_out == var_expected:
-            result_file.write("pass")
-        else:
-            result_file.write("fail")
-
-
-        # tester()
-        # print("test finished")
-
-        in_file.close()
-        out_file.close()
-        lex_file.close()
-        sym_file.close()
-        parser_errors_file.close()
-        semantic_errors_file.close()
-        generated_code_file.close()
-        out_vm_file.close()
-        expected_file.close()
-        result_file.close()
-        os.remove("tester/output.txt")
-        # os.remove("tester/out.txt")
-
-
-
-
-
-
-tester()
+# def tester():
+#     out_file = create_file_by_mode("tokens.txt", "w+")
+#     lex_file = create_file_by_mode("lexical_errors.txt", "w+")
+#     sym_file = create_file_by_mode("symbol_table.txt", "w+")
+#     parser_errors_file = create_file_by_mode("syntax_errors.txt", "w+")
+#     parser_tree_file = create_file_by_mode("parse_tree.txt", "w+", encoding='utf-8')
+#     for i in range(10):
+#         # if i == 2:
+#         #     continue
+#         ''' we wanna run the compiler on input.txt files stored in test folder, input.txt for testcase1 stored in T1 folder in test folder
+#             input.txt for testcase2 stored in T2 folder in test folder and so on
+#             we compile each input.txt file and store the output in output.txt file in tester folder
+#             we run vm on output.txt file wich stores the result in out.txt file in tester folder
+#             we compare the out.txt file in tester folder with expected.txt file in T1 folder for testcase1 and so on
+#             the input files will be provided and we need to read them
+#             the output files will not exist at i==0 and we have to create them and write the output in them
+#             for the next iterations we need to edit the output files and write the output in them
+#         '''
+#
+#         in_file = create_file_by_mode(f"test/Fixed_TestCases_3/TestCases/T{i+1}/input.txt", "r")
+#         # print("IN FILE FOR I:", i+1, "is", in_file)
+#
+#         generated_code_file = create_file_by_mode("output.txt", "w+")
+#         semantic_errors_file = create_file_by_mode("semantic_errors.txt", "w+")
+#
+#         scanner = Scanner(
+#             input_file=in_file,
+#             output_file=out_file,
+#             lex_file=lex_file,
+#             sym_file=sym_file,
+#             symbol_table=symbol_table
+#         )
+#
+#         code_generator = CodeGenerator(symbol_table=symbol_table, heap=heap_manager)
+#
+#         parser = Parser(errors_file=parser_errors_file, parse_tree_file=parser_tree_file,
+#                         scanner=scanner, code_gen=code_generator)
+#         parser.run()
+#
+#         code_generator.write_pb_to_file(generated_code_file, semantic_errors_file)
+#         print("THIS IS I:", i+1)
+#         # print(in_file.read())
+#         # print(generated_code_file.read())
+#
+#         # x = vm.main()
+#         # y = generated_code_file.read()
+#         # print("this is x:",x)
+#         # print("this is generated code:", y)
+#
+#         out_vm_file = create_file_by_mode("out.txt", "w+")
+#         expected_file = create_file_by_mode(f"test/Fixed_TestCases_3/TestCases/T{i+1}/expected.txt", "r")
+#         var_out = out_vm_file.read()
+#         var_expected = expected_file.read()
+#         out_vm_file.seek(0)
+#         expected_file.seek(0)
+#         result_file = create_file_by_mode(f"tester/results/result{i+1}.txt", "w+")
+#         # if var_out == var_expected write in result file "pass" else write "fail"
+#         print("var_out:", var_out)
+#         print("var_expected:", var_expected)
+#         if var_out == var_expected:
+#             result_file.write("pass")
+#         else:
+#             result_file.write("fail")
+#
+#
+#         # tester()
+#         # print("test finished")
+#
+#         in_file.close()
+#         # out_file.close()
+#         # lex_file.close()
+#         # sym_file.close()
+#         # parser_errors_file.close()
+#         semantic_errors_file.close()
+#         generated_code_file.close()
+#         out_vm_file.close()
+#         expected_file.close()
+#         result_file.close()  # os.remove("output.txt")
+#         # os.remove("out.txt")
+#     out_file.close()
+#     lex_file.close()
+#     sym_file.close()
+#     parser_errors_file.close()
+#     parser_tree_file.close()
+#
+#
+#
+#
+#
+#
+# tester()
 print("test finished")

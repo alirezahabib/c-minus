@@ -1,0 +1,6 @@
+#4: Semantic Error! Illegal type of void for 'j'.
+#15: Semantic Error! 'alpha' is not defined.
+#24: Semantic Error! Illegal type of void for 'fa'.
+#34: Semantic Error! 'flag' is not defined.
+#60: Semantic Error! 'flag' is not defined.
+#67: Semantic Error! 'abs' is not defined.

@@ -1,0 +1,6 @@
+#12: Semantic Error! 'g' is not defined.
+#22: Semantic Error! Illegal type of void for 'c'.
+#36: Semantic Error! 'k' is not defined.
+#39: Semantic Error! No 'repeat ... until' found for 'break'.
+#42: Semantic Error! No 'repeat ... until' found for 'break'.
+#54: Semantic Error! Mismatch in numbers of arguments of 'foo'.

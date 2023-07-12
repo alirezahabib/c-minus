@@ -1,0 +1,9 @@
+#6: Semantic Error! Illegal type of void for 'j'.
+#10: Semantic Error! 'k' is not defined.
+#23: Semantic Error! No 'repeat ... until' found for 'break'.
+#40: Semantic Error! No 'repeat ... until' found for 'break'.
+#45: Semantic Error! Mismatch in numbers of arguments of 'fibonacci'.
+error
+error
+#64: Semantic Error! No 'repeat ... until' found for 'break'.
+#71: Semantic Error! Mismatch in numbers of arguments of 'is1prime'.

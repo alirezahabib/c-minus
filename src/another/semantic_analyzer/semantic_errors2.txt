@@ -1,0 +1,4 @@
+#13: Semantic Error! Illegal type of void for 'variable1g'.
+#37: Semantic Error! No 'repeat ... until' found for 'break'.
+#39: Semantic Error! Mismatch in numbers of arguments of 'calculate'.
+#45: Semantic Error! 'variable1u' is not defined.
